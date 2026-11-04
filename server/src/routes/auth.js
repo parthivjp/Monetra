@@ -10,9 +10,10 @@ import { authRateLimit, requireAuth } from '../middleware.js'
 const router = Router()
 const emailSchema = z.string().trim().toLowerCase().email('Enter a valid email address.').max(254)
 const passwordSchema = z.string().min(8, 'Password must be at least 8 characters.').max(72, 'Password must be at most 72 characters.').regex(/[a-z]/, 'Password must include a lowercase letter.').regex(/[A-Z]/, 'Password must include an uppercase letter.').regex(/\d/, 'Password must include a number.')
+const nameSchema = z.string().trim().min(2, 'Name must be at least 2 characters.').max(80, 'Name must be at most 80 characters.').regex(/^[\p{L} ]+$/u, 'Name can contain only letters and spaces.').refine((name) => name.replaceAll(' ', '').length >= 2, 'Name must contain at least 2 letters.')
 
 const signupSchema = z.object({
-  name: z.string().trim().min(2, 'Name must be at least 2 characters.').max(80, 'Name must be at most 80 characters.'),
+  name: nameSchema,
   email: emailSchema,
   password: passwordSchema,
 })
@@ -58,7 +59,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
 router.put('/me', requireAuth, async (req, res, next) => {
   try {
     const data = z.object({
-      name: z.string().trim().min(2, 'Name must be at least 2 characters.').max(80, 'Name must be at most 80 characters.'),
+      name: nameSchema,
     }).parse(req.body)
     const user = await User.findByIdAndUpdate(req.userId, data, { new: true, runValidators: true })
     if (!user) return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User account not found.', fieldErrors: {} } })

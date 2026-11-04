@@ -6,9 +6,11 @@ import { requireAuth } from '../middleware.js'
 const router = Router()
 router.use(requireAuth)
 
+const budgetCategories = ['Housing', 'Food', 'Transport', 'Entertainment', 'Shopping', 'Health', 'Education', 'Bills']
+
 const budgetsSchema = z.object({
   budgets: z.array(z.object({
-    category: z.string().trim().min(1).max(40),
+    category: z.enum(budgetCategories, { error: 'Select a valid budget category.' }),
     limit: z.coerce.number().min(0).max(1000000000),
   })).max(50).refine((budgets) => new Set(budgets.map(({ category }) => category)).size === budgets.length, 'Budget categories must be unique.'),
 })

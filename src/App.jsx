@@ -64,6 +64,41 @@ function isValidDate(value) {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
 }
 
+const namePattern = /^[\p{L} ]+$/u
+
+function validateName(value) {
+  const trimmed = value.trim()
+  if (!trimmed) return 'Full name is required.'
+  if (trimmed.length < 2) return 'Name must be at least 2 characters.'
+  if (trimmed.length > 80) return 'Name must be at most 80 characters.'
+  if (!namePattern.test(trimmed)) return 'Name can contain only letters and spaces.'
+  if (trimmed.replaceAll(' ', '').length < 2) return 'Name must contain at least 2 letters.'
+  return ''
+}
+
+function validateEmail(value) {
+  const trimmed = value.trim()
+  if (!trimmed) return 'Email address is required.'
+  if (trimmed.length > 254) return 'Email address must be at most 254 characters.'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return 'Enter a valid email address.'
+  return ''
+}
+
+function validateNameInput(value) {
+  if (/\d/u.test(value)) return 'Numbers are not allowed in a name.'
+  if ([...value].some((character) => character !== ' ' && !/\p{L}/u.test(character))) return 'Special characters are not allowed in a name.'
+  return ''
+}
+
+function validateSignupPassword(value) {
+  if (!value) return ''
+  if (value.length < 8) return 'Password must be at least 8 characters.'
+  if (!/[a-z]/.test(value)) return 'Password must include a lowercase letter.'
+  if (!/[A-Z]/.test(value)) return 'Password must include an uppercase letter.'
+  if (!/\d/.test(value)) return 'Password must include a number.'
+  return ''
+}
+
 function read(key, fallback) {
   try {
     const value = localStorage.getItem(key)
@@ -99,20 +134,26 @@ function AuthScreen({ onLogin }) {
     event.preventDefault()
     setError('')
     setFieldErrors({})
-    if (!email || !password || (mode === 'signup' && !name)) {
-      setError('Please complete all fields.')
-      return
+    const nextErrors = {}
+    if (mode === 'signup') {
+      const nameError = validateName(name)
+      if (nameError) nextErrors.name = nameError
     }
-    if (mode === 'signup' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setFieldErrors({ email: 'Enter a valid email address.' })
-      return
+    const emailError = validateEmail(email)
+    if (emailError) nextErrors.email = emailError
+    if (!password) nextErrors.password = 'Password is required.'
+    if (password.length > 72) nextErrors.password = 'Password must be at most 72 characters.'
+    if (mode === 'signup') {
+      const passwordErrors = []
+      if (password.length < 8) passwordErrors.push('Password must be at least 8 characters.')
+      if (!/[a-z]/.test(password)) passwordErrors.push('Password must include a lowercase letter.')
+      if (!/[A-Z]/.test(password)) passwordErrors.push('Password must include an uppercase letter.')
+      if (!/\d/.test(password)) passwordErrors.push('Password must include a number.')
+      if (passwordErrors.length) nextErrors.password = passwordErrors[0]
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setFieldErrors({ email: 'Enter a valid email address.' })
-      return
-    }
-    if (mode === 'login' && !password) {
-      setFieldErrors({ password: 'Password is required.' })
+    if (Object.keys(nextErrors).length) {
+      setFieldErrors(nextErrors)
+      setError('Please correct the highlighted fields.')
       return
     }
     setLoading(true)
@@ -155,12 +196,39 @@ function AuthScreen({ onLogin }) {
           <h1>{mode === 'login' ? 'Welcome back.' : 'Create your account.'}</h1>
           <span>{mode === 'login' ? 'Sign in to continue to your ledger.' : 'Start making every dollar count.'}</span>
         </div>
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           {mode === 'signup' && (
-            <label>Full name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Alex Morgan" /></label>
+            <label>
+              Full name
+              <input
+                value={name}
+                onChange={(e) => {
+                  const entered = e.target.value
+                  const filtered = entered.replace(/[^\p{L} ]/gu, '')
+                  setName(filtered)
+                  setFieldErrors((current) => ({
+                    ...current,
+                    name: validateNameInput(entered) || '',
+                  }))
+                }}
+                onBlur={() => {
+                  setFieldErrors((current) => ({
+                    ...current,
+                    name: validateName(name) || '',
+                  }))
+                }}
+                placeholder="Alex Morgan"
+                maxLength={80}
+                autoComplete="name"
+                pattern="[\\p{L} ]+"
+                aria-invalid={Boolean(fieldErrors.name)}
+                aria-describedby={fieldErrors.name ? 'signup-name-error' : undefined}
+              />
+              {fieldErrors.name && <small className="field-error" id="signup-name-error">{fieldErrors.name}</small>}
+            </label>
           )}
-          <label>Email address<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />{fieldErrors.email && <small className="field-error">{fieldErrors.email}</small>}</label>
-          <label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'signup' ? '8+ chars, upper, lower, number' : 'Your password'} />{fieldErrors.password && <small className="field-error">{fieldErrors.password}</small>}</label>
+          <label>Email address<input type="email" value={email} onChange={(e) => { const next = e.target.value.replace(/\s/g, ''); setEmail(next); setFieldErrors((current) => ({ ...current, email: next && validateEmail(next) ? validateEmail(next) : '' })) }} onBlur={() => setFieldErrors((current) => ({ ...current, email: validateEmail(email) || '' }))} placeholder="you@example.com" maxLength={254} autoComplete="email" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'auth-email-error' : undefined} />{fieldErrors.email && <small className="field-error" id="auth-email-error">{fieldErrors.email}</small>}</label>
+          <label>Password<input type="password" value={password} onChange={(e) => { const next = e.target.value; setPassword(next); setFieldErrors((current) => ({ ...current, password: mode === 'signup' ? validateSignupPassword(next) : '' })) }} onBlur={() => setFieldErrors((current) => ({ ...current, password: mode === 'signup' ? validateSignupPassword(password) || (password ? '' : 'Password is required.') : (!password ? 'Password is required.' : '') }))} placeholder={mode === 'signup' ? '8+ chars, upper, lower, number' : 'Your password'} maxLength={72} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? 'auth-password-error' : undefined} />{fieldErrors.password && <small className="field-error" id="auth-password-error">{fieldErrors.password}</small>}</label>
           {error && <p className="form-error">{error}</p>}
           <button className="primary auth-submit" type="submit" disabled={loading}>{loading ? 'Please wait...' : (mode === 'login' ? 'Sign in' : 'Create account')}</button>
         </form>
@@ -469,10 +537,13 @@ function BudgetsPage({ transactions, toast }) {
 function SettingsPage({ user, setUser, theme, setTheme, toast }) {
   const [name, setName] = useState(user.name)
   const [saving, setSaving] = useState(false)
+  const [profileError, setProfileError] = useState('')
 
   const saveProfile = async () => {
-    if (name.trim().length < 2) {
-      toast('Name must be at least 2 characters.')
+    const nameError = validateName(name)
+    if (nameError) {
+      setProfileError(nameError)
+      toast(nameError)
       return
     }
     setSaving(true)
@@ -495,7 +566,7 @@ function SettingsPage({ user, setUser, theme, setTheme, toast }) {
     <div className="page">
       <header className="page-header"><div><p>PREFERENCES</p><h1>Settings</h1></div></header>
       <section className="panel settings-panel">
-        <div><span>Profile</span><div className="profile-edit"><input value={name} onChange={(e) => setName(e.target.value)} aria-label="Full name" /><button className="theme-toggle" onClick={saveProfile} disabled={saving}>{saving ? 'Saving...' : 'Save profile'}</button></div><p>{user.email}</p></div>
+        <div><span>Profile</span><div className="profile-edit"><input value={name} onChange={(e) => { const entered = e.target.value; const filtered = entered.replace(/[^\p{L} ]/gu, ''); setName(filtered); setProfileError(validateNameInput(entered)) }} onBlur={() => setProfileError(validateName(name) || '')} aria-label="Full name" maxLength={80} autoComplete="name" aria-invalid={Boolean(profileError)} /> <button className="theme-toggle" onClick={saveProfile} disabled={saving}>{saving ? 'Saving...' : 'Save profile'}</button></div>{profileError && <small className="field-error">{profileError}</small>}<p>{user.email}</p></div>
         <div className="setting-row"><div><strong>Appearance</strong><span>Choose how Ledgerly looks on this device.</span></div><button className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}{theme === 'light' ? 'Dark mode' : 'Light mode'}</button></div>
         <div className="setting-row"><div><strong>Cloud data</strong><span>Transactions and budgets are stored securely in MongoDB.</span></div><span className="status-pill">Connected</span></div>
       </section>
@@ -529,7 +600,7 @@ function TransactionModal({ close, addTransaction }) {
           <div className="type-toggle"><button type="button" className={form.type === 'expense' ? 'active expense' : ''} onClick={() => changeType('expense')}>Expense</button><button type="button" className={form.type === 'income' ? 'active income' : ''} onClick={() => changeType('income')}>Income</button></div>
           <label>Amount<div className="amount-input"><span>₹</span><input autoFocus type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" /></div></label>
           <div className="form-grid"><label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{categories[form.type].map((item) => <option key={item}>{item}</option>)}</select></label><label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label></div>
-          <label>Note<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="What was this for?" /></label>
+          <label>Note<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value.slice(0, 500) })} placeholder="What was this for?" maxLength={500} /></label>
           {error && <p className="form-error">{error}</p>}
           <button className="primary modal-submit" type="submit">Add transaction</button>
         </form>

@@ -1,6 +1,6 @@
 # Runtime Validation Report
 
-**Generated**: 2026-11-04T22:53:06+05:30
+**Generated**: 2026-11-04T23:18:00+05:30
 **Target**: C:\Users\parth\Documents\GitHub\Monetra
 
 ## Summary
@@ -12,7 +12,7 @@
 | Lint | PASS | 0 | `npm run lint` completed with no findings |
 | Production Build | PASS | 0 | `npm run build` completed successfully |
 | Backend Test Command | UNVERIFIED | 0 | `npm --prefix server test` ran 0 tests |
-| E2E Tests | PASS | 0 | 4 Playwright tests passed across 3 test files |
+| E2E Tests | PASS | 0 | 5 Playwright tests passed across 3 test files |
 
 **Overall**: PASS with coverage gaps
 
@@ -31,6 +31,7 @@
 2. Demo login, dashboard render, and logout
 3. Add transaction, read it back from MongoDB, reload, and delete it
 4. Update budgets and profile, reload, and verify persisted values
+5. Signup rejects invalid name, email, and password input
 
 ## Test Evidence
 
@@ -38,7 +39,7 @@
 - `e2e/transactions.spec.js`
 - `e2e/budgets.spec.js`
 - `playwright.config.js`
-- Playwright result: 4 passed, 0 failed
+- Playwright result: 5 passed, 0 failed using one serialized worker
 - Backend health: `{"status":"ok","database":"ledgerly_finance"}`
 
 ## Gaps and Follow-up

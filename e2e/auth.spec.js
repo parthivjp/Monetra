@@ -22,3 +22,20 @@ test('demo login opens the dashboard and clears on logout', async ({ page }) => 
   await page.getByRole('button', { name: 'Log out' }).click()
   await expect(page.getByText('Welcome back.')).toBeVisible()
 })
+
+test('signup validates name, email, and password before API submission', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Create account' }).click()
+
+  const nameInput = page.getByLabel('Full name')
+  await nameInput.fill('Alex123 Morgan!')
+  await expect(nameInput).toHaveValue('Alex Morgan')
+  await expect(page.getByText('Numbers are not allowed in a name.')).toBeVisible()
+
+  await page.getByLabel('Email address').fill('invalid-email')
+  await page.getByLabel('Password').fill('weak')
+  await page.getByRole('button', { name: 'Create account' }).click()
+
+  await expect(page.getByText('Enter a valid email address.')).toBeVisible()
+  await expect(page.getByText('Password must be at least 8 characters.')).toBeVisible()
+})
