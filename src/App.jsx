@@ -89,7 +89,24 @@ function validateEmail(value) {
   const trimmed = value.trim()
   if (!trimmed) return 'Email address is required.'
   if (trimmed.length > 254) return 'Email address must be at most 254 characters.'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return 'Enter a valid email address.'
+  const email = trimmed.toLowerCase()
+  if ((email.match(/@/g) || []).length !== 1) return 'Enter a valid email address.'
+  const [local, domain] = email.split('@')
+  if (!local || !domain) return 'Enter a valid email address.'
+  if (local.length > 64 || local.startsWith('.') || local.endsWith('.') || local.includes('..')) return 'Check the part before @ in your email address.'
+  if (!/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/i.test(local)) return 'Email address contains an unsupported character.'
+  if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(domain)) return 'Enter a complete email address with a valid domain.'
+  const typoDomains = {
+    'gmail.co': 'Did you mean gmail.com?',
+    'gmail.com.co': 'Did you mean gmail.com?',
+    'gmail.cmo': 'Did you mean gmail.com?',
+    'gmail.con': 'Did you mean gmail.com?',
+    'gmail.om': 'Did you mean gmail.com?',
+    'hotmail.con': 'Did you mean hotmail.com?',
+    'outlook.con': 'Did you mean outlook.com?',
+    'yahoo.con': 'Did you mean yahoo.com?',
+  }
+  if (typoDomains[domain]) return typoDomains[domain]
   return ''
 }
 
@@ -533,6 +550,9 @@ function SettingsPage({ user, setUser, theme, setTheme, toast }) {
   const [name, setName] = useState(user.name)
   const [saving, setSaving] = useState(false)
   const [profileError, setProfileError] = useState('')
+  const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' })
+  const [passwordError, setPasswordError] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
 
   const saveProfile = async () => {
     const nameError = validateName(name)
@@ -557,11 +577,50 @@ function SettingsPage({ user, setUser, theme, setTheme, toast }) {
     }
   }
 
+  const changePassword = async () => {
+    setPasswordError('')
+    if (!passwords.current) return setPasswordError('Enter your current password.')
+    const nextError = validateSignupPassword(passwords.next)
+    if (nextError) return setPasswordError(nextError)
+    if (passwords.next !== passwords.confirm) return setPasswordError('New passwords do not match.')
+    setChangingPassword(true)
+    try {
+      await apiRequest('/auth/password', {
+        method: 'PUT',
+        body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.next }),
+      })
+      setPasswords({ current: '', next: '', confirm: '' })
+      toast('Password updated')
+    } catch (error) {
+      setPasswordError(error.fieldErrors?.currentPassword || error.message || 'Could not update password.')
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   return (
     <div className="page">
       <header className="page-header"><div><p>PREFERENCES</p><h1>Settings</h1></div></header>
       <section className="panel settings-panel">
-        <div><span>Profile</span><div className="profile-edit"><input value={name} onChange={(e) => { const entered = e.target.value; const filtered = entered.replace(/[^\p{L} ]/gu, ''); setName(filtered); setProfileError(validateNameInput(entered)) }} onBlur={() => setProfileError(validateName(name) || '')} aria-label="Full name" maxLength={80} autoComplete="name" aria-invalid={Boolean(profileError)} /> <button className="theme-toggle" onClick={saveProfile} disabled={saving}>{saving ? 'Saving...' : 'Save profile'}</button></div>{profileError && <small className="field-error">{profileError}</small>}<p>{user.email}</p></div>
+        <div className="profile-section">
+          <span>Profile</span>
+          <div className="profile-edit">
+            <label>Full name<input value={name} onChange={(e) => { const entered = e.target.value; const filtered = entered.replace(/[^\p{L} ]/gu, ''); setName(filtered); setProfileError(validateNameInput(entered)) }} onBlur={() => setProfileError(validateName(name) || '')} aria-label="Full name" maxLength={80} autoComplete="name" aria-invalid={Boolean(profileError)} /></label>
+            <button className="theme-toggle" onClick={saveProfile} disabled={saving}>{saving ? 'Saving...' : 'Save profile'}</button>
+          </div>
+          {profileError && <small className="field-error">{profileError}</small>}
+          <label className="profile-email">Email address<input value={user.email} readOnly aria-label="Email address" /></label>
+        </div>
+        <div className="setting-row password-settings">
+          <div><strong>Change password</strong><span>Use a strong password with letters, numbers, and symbols.</span></div>
+          <div className="password-fields">
+            <input type="password" value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} placeholder="Current password" autoComplete="current-password" aria-label="Current password" />
+            <input type="password" value={passwords.next} onChange={(e) => setPasswords({ ...passwords, next: e.target.value })} placeholder="New password" autoComplete="new-password" aria-label="New password" />
+            <input type="password" value={passwords.confirm} onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })} placeholder="Confirm new password" autoComplete="new-password" aria-label="Confirm new password" />
+            {passwordError && <small className="field-error">{passwordError}</small>}
+            <button className="theme-toggle" onClick={changePassword} disabled={changingPassword}>{changingPassword ? 'Updating...' : 'Update password'}</button>
+          </div>
+        </div>
         <div className="setting-row"><div><strong>Appearance</strong><span>Choose how Monetra looks on this device.</span></div><button className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}{theme === 'light' ? 'Dark mode' : 'Light mode'}</button></div>
         <div className="setting-row"><div><strong>Cloud data</strong><span>Transactions and budgets are stored securely in MongoDB.</span></div><span className="status-pill">Connected</span></div>
       </section>

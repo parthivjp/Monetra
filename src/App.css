@@ -10,7 +10,7 @@
   --panel: #fcfbf8;
   --panel-soft: #f7f6f1;
   --text: #232820;
-  --muted: #85877f;
+  --muted: #686d63;
   --border: #e4e1d8;
   --green: #657c5c;
   --orange: #e8a44f;
@@ -24,7 +24,7 @@
   --panel: #20221e;
   --panel-soft: #262824;
   --text: #eceee8;
-  --muted: #a7aaa2;
+  --muted: #bdc2b6;
   --border: #343731;
   --chart-grid: #343731;
 }
@@ -58,6 +58,7 @@ button { cursor: pointer; }
 .auth-card label, .modal label, .budget-card label { display: grid; gap: 8px; font-size: 12px; font-weight: 700; color: #555a50; }
 .auth-card input, .modal input, .modal select, .filters input, .filters select, .money-input input { width: 100%; height: 46px; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--text); padding: 0 13px; outline: none; }
 .auth-card input:focus, .modal input:focus, .modal select:focus, .filters input:focus, .filters select:focus { border-color: #7c9a68; box-shadow: 0 0 0 3px rgba(124,154,104,.1); }
+.auth-card input::placeholder, .password-fields input::placeholder, .profile-edit input::placeholder { color: #686e62; opacity: 1; }
 .auth-card input[aria-invalid="true"], .profile-edit input[aria-invalid="true"] { border-color: #b8523d; background: #fffaf8; box-shadow: 0 0 0 3px rgba(184,82,61,.08); }
 .form-error { margin: -6px 0 0; color: #b8523d; font-size: 12px; }
 .field-error { color: #b8523d; font-size: 11px; font-weight: 600; margin-top: 2px; }
@@ -153,6 +154,12 @@ button { cursor: pointer; }
 .money-input input { height: 38px; border: 0; background: transparent; padding-left: 4px; }
 .settings-panel { padding: 26px; display: grid; }
 .settings-panel > div:first-child { padding-bottom: 22px; border-bottom: 1px solid var(--border); }
+.profile-section label { display: grid; gap: 7px; margin-top: 14px; color: var(--text); font-size: 12px; font-weight: 700; }
+.profile-section label input { height: 42px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: var(--text); padding: 0 12px; }
+.profile-email input { opacity: 1; color: var(--muted) !important; background: var(--panel-soft) !important; }
+.password-settings { padding: 18px 0; }
+.password-fields { width: min(360px, 100%); display: grid; gap: 8px; }
+.password-fields input { height: 42px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: var(--text); padding: 0 12px; }
 .settings-panel h2 { margin: 5px 0 3px; font-family: 'Newsreader', serif; }
 .profile-edit { margin-top: 8px; display: flex; gap: 8px; max-width: 520px; }
 .profile-edit input { height: 40px; flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: var(--text); padding: 0 12px; }
@@ -249,6 +256,98 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .chart-wrap, .pie-wrap { min-width: 0; overflow: hidden; }
 .recharts-wrapper, .recharts-surface { max-width: 100%; }
 .recharts-tooltip-wrapper { max-width: calc(100% - 16px); }
+
+/* High-contrast text and form visibility across the full application */
+.auth-heading > span,
+.auth-switch,
+.setting-row > div span,
+.settings-panel p,
+.settings-panel > div:first-child span,
+.sidebar-user span,
+.sidebar nav button,
+.budget-amount span,
+.transaction-main span,
+.transaction-date,
+.modal-head button {
+  color: #62685b !important;
+}
+
+:root[data-theme='dark'] .auth-heading > span,
+:root[data-theme='dark'] .auth-switch,
+:root[data-theme='dark'] .setting-row > div span,
+:root[data-theme='dark'] .settings-panel p,
+:root[data-theme='dark'] .settings-panel > div:first-child span,
+:root[data-theme='dark'] .sidebar-user span,
+:root[data-theme='dark'] .sidebar nav button,
+:root[data-theme='dark'] .budget-amount span,
+:root[data-theme='dark'] .transaction-main span,
+:root[data-theme='dark'] .transaction-date {
+  color: #c5c9be !important;
+}
+
+.auth-card label,
+.modal label,
+.profile-section label,
+.profile-email,
+.setting-row strong {
+  color: var(--text) !important;
+}
+
+.auth-card label,
+.profile-section label {
+  font-size: 13px;
+}
+
+.auth-heading > span {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.auth-switch {
+  font-size: 14px;
+}
+
+.setting-row strong,
+.setting-row > div span,
+.settings-panel p,
+.settings-panel > div:first-child span {
+  font-size: 13px;
+}
+
+.auth-card input,
+.profile-edit input,
+.profile-email input,
+.password-fields input,
+.modal input,
+.modal select,
+.filters input,
+.filters select {
+  border-color: #aab0a1 !important;
+  color: var(--text) !important;
+  opacity: 1;
+}
+
+.auth-card input::placeholder,
+.profile-edit input::placeholder,
+.profile-email input::placeholder,
+.password-fields input::placeholder,
+.modal input::placeholder {
+  color: #555c51 !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='dark'] .auth-card input,
+:root[data-theme='dark'] .profile-edit input,
+:root[data-theme='dark'] .profile-email input,
+:root[data-theme='dark'] .password-fields input,
+:root[data-theme='dark'] .modal input,
+:root[data-theme='dark'] .modal select,
+:root[data-theme='dark'] .filters input,
+:root[data-theme='dark'] .filters select {
+  border-color: #626759 !important;
+  background: #292b27 !important;
+  color: #f7f8f4 !important;
+}
 
 @media (min-width: 981px) and (max-width: 1180px) {
   .app-shell { grid-template-columns: 210px minmax(0, 1fr); }

@@ -37,6 +37,8 @@ test('signup validates name, email, and password before API submission', async (
   await expect(nameInput).toHaveValue('Alex Morgan')
   await expect(page.getByText('Numbers are not allowed in a name.')).toBeVisible()
 
+  await page.getByLabel('Email address').fill('parthiv.panchal.9299@gmail.co')
+  await expect(page.getByText('Did you mean gmail.com?')).toBeVisible()
   await page.getByLabel('Email address').fill('invalid-email')
   await page.getByLabel('Password').fill('weak')
   await page.getByRole('button', { name: 'Create account' }).click()
