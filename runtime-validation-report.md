@@ -28,7 +28,7 @@
 ## Critical Journeys Covered
 
 1. Invalid-login rejection with no session token created
-2. Demo login, dashboard render, and logout
+2. Real signup, empty dashboard render, and logout
 3. Add transaction, read it back from MongoDB, reload, and delete it
 4. Update budgets and profile, reload, and verify persisted values
 5. Signup rejects invalid name, email, and password input

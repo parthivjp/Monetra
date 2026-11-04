@@ -3,8 +3,6 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { z } from 'zod'
 import User from '../models/User.js'
-import Transaction from '../models/Transaction.js'
-import Budget from '../models/Budget.js'
 import { authRateLimit, requireAuth } from '../middleware.js'
 
 const router = Router()
@@ -64,30 +62,6 @@ router.put('/me', requireAuth, async (req, res, next) => {
     const user = await User.findByIdAndUpdate(req.userId, data, { new: true, runValidators: true })
     if (!user) return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User account not found.', fieldErrors: {} } })
     res.json({ user: { id: user._id, name: user.name, email: user.email } })
-  } catch (error) { next(error) }
-})
-
-router.post('/demo', authRateLimit(), async (req, res, next) => {
-  try {
-    const email = 'demo@ledgerly.app'
-    let user = await User.findOne({ email })
-    if (!user) {
-      user = await User.create({ name: 'Alex Morgan', email, passwordHash: await bcrypt.hash('Demo1234!', 12) })
-      await Transaction.insertMany([
-        { user: user._id, type: 'expense', category: 'Housing', amount: 18500, date: new Date(Date.now() - 86400000).toISOString().slice(0, 10), note: 'Monthly rent' },
-        { user: user._id, type: 'expense', category: 'Food', amount: 3250, date: new Date(Date.now() - 172800000).toISOString().slice(0, 10), note: 'D-Mart groceries' },
-        { user: user._id, type: 'income', category: 'Salary', amount: 82500, date: new Date(Date.now() - 345600000).toISOString().slice(0, 10), note: 'Monthly salary' },
-        { user: user._id, type: 'expense', category: 'Transport', amount: 1450, date: new Date(Date.now() - 518400000).toISOString().slice(0, 10), note: 'Metro pass' },
-        { user: user._id, type: 'expense', category: 'Shopping', amount: 4200, date: new Date(Date.now() - 691200000).toISOString().slice(0, 10), note: 'Online shopping' },
-      ])
-      await Budget.insertMany([
-        { user: user._id, category: 'Housing', limit: 22000 },
-        { user: user._id, category: 'Food', limit: 10000 },
-        { user: user._id, category: 'Transport', limit: 5000 },
-        { user: user._id, category: 'Entertainment', limit: 4000 },
-      ])
-    }
-    res.json({ token: issueToken(user), user: { id: user._id, name: user.name, email: user.email } })
   } catch (error) { next(error) }
 })
 

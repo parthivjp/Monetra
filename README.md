@@ -1,4 +1,4 @@
-# Ledgerly Personal Finance Tracker
+# Monetra Personal Finance Tracker
 
 A full-stack personal finance dashboard built with React, Express, MongoDB, Mongoose, and JWT authentication.
 

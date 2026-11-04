@@ -11,9 +11,14 @@ test('login rejects invalid credentials without creating a session', async ({ pa
   await expect.poll(() => page.evaluate(() => localStorage.getItem('finance-token'))).toBeNull()
 })
 
-test('demo login opens the dashboard and clears on logout', async ({ page }) => {
+test('signup opens the empty dashboard and clears on logout', async ({ page }) => {
+  const stamp = Date.now()
   await page.goto('/')
-  await page.getByRole('button', { name: 'Explore with demo account' }).click()
+  await page.getByRole('button', { name: 'Create account' }).click()
+  await page.getByLabel('Full name').fill(`Test User ${stamp}`)
+  await page.getByLabel('Email address').fill(`new-user-${stamp}@ledgerly.app`)
+  await page.getByLabel('Password').fill('ValidPass123!')
+  await page.getByRole('button', { name: 'Create account' }).click()
 
   await expect(page.getByText(/Good morning,/)).toBeVisible()
   await expect(page.getByText('Monthly overview')).toBeVisible()

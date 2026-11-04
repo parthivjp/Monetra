@@ -2,7 +2,11 @@ import { test, expect } from '@playwright/test'
 
 test('update budgets and profile, then verify persistence after reload', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Explore with demo account' }).click()
+  await page.getByRole('button', { name: 'Create account' }).click()
+  await page.getByLabel('Full name').fill('Budget User')
+  await page.getByLabel('Email address').fill(`budget-${Date.now()}@ledgerly.app`)
+  await page.getByLabel('Password').fill('ValidPass123!')
+  await page.getByRole('button', { name: 'Create account' }).click()
   await expect(page.getByText(/Good morning,/)).toBeVisible()
 
   await page.getByRole('button', { name: 'Budgets' }).click()

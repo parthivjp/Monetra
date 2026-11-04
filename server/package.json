@@ -1,5 +1,5 @@
 {
-  "name": "ledgerly-server",
+  "name": "monetra-server",
   "private": true,
   "type": "module",
   "scripts": {

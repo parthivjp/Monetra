@@ -76,7 +76,7 @@ router.get('/export/csv', async (req, res, next) => {
     ]
     const csv = '\ufeff' + rows.map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')
     res.setHeader('Content-Type', 'text/csv; charset=utf-8')
-    res.setHeader('Content-Disposition', 'attachment; filename="ledgerly-transactions.csv"')
+    res.setHeader('Content-Disposition', 'attachment; filename="monetra-transactions.csv"')
     res.send(csv)
   } catch (error) { next(error) }
 })
@@ -85,11 +85,11 @@ router.get('/export/pdf', async (req, res, next) => {
   try {
     const transactions = await Transaction.find(buildExportFilter(req)).sort({ date: -1, createdAt: -1 }).lean()
     res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', 'attachment; filename="ledgerly-transactions.pdf"')
+    res.setHeader('Content-Disposition', 'attachment; filename="monetra-transactions.pdf"')
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' })
     doc.pipe(res)
-    doc.fontSize(20).text('Ledgerly Transactions', { align: 'center' })
+    doc.fontSize(20).text('Monetra Transactions', { align: 'center' })
     doc.moveDown(0.5)
     doc.fontSize(10).text(`Exported ${new Date().toLocaleDateString('en-IN')}`)
     doc.moveDown()

@@ -43,7 +43,7 @@ if (!process.env.JWT_SECRET) {
 const port = Number(process.env.PORT) || 5000
 
 await connectDatabase()
-const server = app.listen(port, () => console.log(`Ledgerly API listening on http://localhost:${port}`))
+const server = app.listen(port, () => console.log(`Monetra API listening on http://localhost:${port}`))
 
 async function shutdown() {
   server.close(async () => {

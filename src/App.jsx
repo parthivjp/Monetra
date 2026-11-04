@@ -44,7 +44,16 @@ const categories = {
 }
 
 const colors = ['#f97316', '#fbbf24', '#7c9a68', '#5b7c99', '#b779a4', '#9a8b7a', '#67a6a0', '#d08370']
-const defaultBudgets = { Housing: 22000, Food: 10000, Transport: 5000, Entertainment: 4000 }
+const defaultBudgets = {
+  Housing: 0,
+  Food: 0,
+  Transport: 0,
+  Entertainment: 0,
+  Shopping: 0,
+  Health: 0,
+  Education: 0,
+  Bills: 0,
+}
 
 const money = (value) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(value) || 0)
@@ -171,24 +180,11 @@ function AuthScreen({ onLogin }) {
     }
   }
 
-  const demoLogin = async () => {
-    setError('')
-    setLoading(true)
-    try {
-      const data = await apiRequest('/auth/demo', { method: 'POST', body: '{}' })
-      onLogin(data.user, data.token)
-    } catch (err) {
-      setError(err.message || 'Demo login failed.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <main className="auth-page">
       <section className="auth-brand">
         <div className="brand-mark"><WalletCards size={22} /></div>
-        <span>Ledgerly</span>
+        <span>Monetra</span>
       </section>
       <section className="auth-card">
         <div className="auth-heading">
@@ -232,9 +228,8 @@ function AuthScreen({ onLogin }) {
           {error && <p className="form-error">{error}</p>}
           <button className="primary auth-submit" type="submit" disabled={loading}>{loading ? 'Please wait...' : (mode === 'login' ? 'Sign in' : 'Create account')}</button>
         </form>
-        <button className="demo-button" type="button" onClick={demoLogin} disabled={loading}>{loading ? 'Opening demo...' : 'Explore with demo account'}</button>
         <p className="auth-switch">
-          {mode === 'login' ? 'New to Ledgerly?' : 'Already have an account?'}
+          {mode === 'login' ? 'New to Monetra?' : 'Already have an account?'}
           <button onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}>
             {mode === 'login' ? 'Create account' : 'Sign in'}
           </button>
@@ -255,7 +250,7 @@ function Sidebar({ page, setPage, user, onLogout, mobileOpen, setMobileOpen }) {
     <aside className={`sidebar ${mobileOpen ? 'open' : ''}`} aria-label="Main navigation">
       <div className="sidebar-brand">
         <div className="brand-mark"><WalletCards size={20} /></div>
-        <span>Ledgerly</span>
+        <span>Monetra</span>
         <button className="mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={20} /></button>
       </div>
       <nav>
@@ -567,7 +562,7 @@ function SettingsPage({ user, setUser, theme, setTheme, toast }) {
       <header className="page-header"><div><p>PREFERENCES</p><h1>Settings</h1></div></header>
       <section className="panel settings-panel">
         <div><span>Profile</span><div className="profile-edit"><input value={name} onChange={(e) => { const entered = e.target.value; const filtered = entered.replace(/[^\p{L} ]/gu, ''); setName(filtered); setProfileError(validateNameInput(entered)) }} onBlur={() => setProfileError(validateName(name) || '')} aria-label="Full name" maxLength={80} autoComplete="name" aria-invalid={Boolean(profileError)} /> <button className="theme-toggle" onClick={saveProfile} disabled={saving}>{saving ? 'Saving...' : 'Save profile'}</button></div>{profileError && <small className="field-error">{profileError}</small>}<p>{user.email}</p></div>
-        <div className="setting-row"><div><strong>Appearance</strong><span>Choose how Ledgerly looks on this device.</span></div><button className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}{theme === 'light' ? 'Dark mode' : 'Light mode'}</button></div>
+        <div className="setting-row"><div><strong>Appearance</strong><span>Choose how Monetra looks on this device.</span></div><button className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}{theme === 'light' ? 'Dark mode' : 'Light mode'}</button></div>
         <div className="setting-row"><div><strong>Cloud data</strong><span>Transactions and budgets are stored securely in MongoDB.</span></div><span className="status-pill">Connected</span></div>
       </section>
     </div>

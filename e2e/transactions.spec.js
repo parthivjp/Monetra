@@ -3,7 +3,11 @@ import { test, expect } from '@playwright/test'
 test('create, read back, reload, and delete a transaction through MongoDB', async ({ page }) => {
   const note = `Playwright rent ${Date.now()}`
   await page.goto('/')
-  await page.getByRole('button', { name: 'Explore with demo account' }).click()
+  await page.getByRole('button', { name: 'Create account' }).click()
+  await page.getByLabel('Full name').fill('Transaction User')
+  await page.getByLabel('Email address').fill(`transaction-${Date.now()}@ledgerly.app`)
+  await page.getByLabel('Password').fill('ValidPass123!')
+  await page.getByRole('button', { name: 'Create account' }).click()
   await expect(page.getByText(/Good morning,/)).toBeVisible()
 
   await page.getByRole('button', { name: 'Add transaction' }).first().click()
