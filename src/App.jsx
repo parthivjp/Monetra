@@ -184,11 +184,11 @@ function Sidebar({ page, setPage, user, onLogout, mobileOpen, setMobileOpen }) {
     ['settings', Settings, 'Settings'],
   ]
   return (
-    <aside className={`sidebar ${mobileOpen ? 'open' : ''}`}>
+    <aside className={`sidebar ${mobileOpen ? 'open' : ''}`} aria-label="Main navigation">
       <div className="sidebar-brand">
         <div className="brand-mark"><WalletCards size={20} /></div>
         <span>Ledgerly</span>
-        <button className="mobile-close" onClick={() => setMobileOpen(false)}><X size={20} /></button>
+        <button className="mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={20} /></button>
       </div>
       <nav>
         {items.map(([id, Icon, label]) => (
@@ -332,7 +332,7 @@ function TransactionList({ transactions, compact = false, onDelete }) {
   return (
     <div className={`transaction-list ${compact ? 'compact' : ''}`}>
       {transactions.map((item) => (
-        <div className="transaction-row" key={item._id || item.id}>
+        <div className={`transaction-row ${compact ? 'compact-row' : ''}`} key={item._id || item.id}>
           <div className={`transaction-icon ${item.type}`}><ReceiptText size={18} /></div>
           <div className="transaction-main"><strong>{item.note || item.category}</strong><span>{item.category}</span></div>
           <div className="transaction-date">{new Date(`${item.date}T12:00:00`).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
@@ -566,6 +566,19 @@ function App() {
   }, [theme])
 
   useEffect(() => {
+    if (!mobileOpen) return
+    document.body.classList.add('nav-open')
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setMobileOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.classList.remove('nav-open')
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [mobileOpen])
+
+  useEffect(() => {
     const handleUnauthorized = () => {
       localStorage.removeItem(STORAGE.token)
       localStorage.removeItem(STORAGE.session)
@@ -613,8 +626,9 @@ function App() {
   return (
     <div className="app-shell">
       <Sidebar page={page} setPage={setPage} user={session} onLogout={logout} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+      {mobileOpen && <button className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <main className="main-content">
-        <button className="mobile-menu" onClick={() => setMobileOpen(true)}><WalletCards size={20} /></button>
+        <button className="mobile-menu" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><WalletCards size={20} /></button>
         {page === 'dashboard' && <Dashboard transactions={transactions} user={session} setPage={setPage} setModal={setModal} />}
         {page === 'transactions' && <TransactionsPage transactions={transactions} setTransactions={setTransactions} setModal={setModal} toast={setToast} />}
         {page === 'budgets' && <BudgetsPage transactions={transactions} toast={setToast} />}
