@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import eyeIcon from './assets/eye.svg'
+import eyeOffIcon from './assets/eye-off.svg'
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -148,6 +150,46 @@ function Toast({ message, onDone }) {
   return message ? <div className="toast">{message}</div> : null
 }
 
+function PasswordField({
+  id,
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  ariaLabel,
+  ariaInvalid,
+  ariaDescribedBy,
+  maxLength = 72,
+}) {
+  const [visible, setVisible] = useState(false)
+
+  return (
+    <div className="password-control">
+      <input
+        id={id}
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        maxLength={maxLength}
+        aria-label={ariaLabel}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
+      />
+      <button
+        className="password-toggle"
+        type="button"
+        onClick={() => setVisible((current) => !current)}
+        aria-label={visible ? `Hide ${ariaLabel || 'password'}` : `Show ${ariaLabel || 'password'}`}
+        aria-pressed={visible}
+      >
+        <img src={visible ? eyeOffIcon : eyeIcon} alt="" aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
 function AuthScreen({ onLogin }) {
   const [mode, setMode] = useState('login')
   const [name, setName] = useState('')
@@ -242,7 +284,7 @@ function AuthScreen({ onLogin }) {
             </label>
           )}
           <label>Email address<input type="email" value={email} onChange={(e) => { const next = e.target.value.replace(/\s/g, ''); setEmail(next); setFieldErrors((current) => ({ ...current, email: next && validateEmail(next) ? validateEmail(next) : '' })) }} onBlur={() => setFieldErrors((current) => ({ ...current, email: validateEmail(email) || '' }))} placeholder="you@example.com" maxLength={254} autoComplete="email" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'auth-email-error' : undefined} />{fieldErrors.email && <small className="field-error" id="auth-email-error">{fieldErrors.email}</small>}</label>
-          <label>Password<input type="password" value={password} onChange={(e) => { const next = e.target.value; setPassword(next); setFieldErrors((current) => ({ ...current, password: mode === 'signup' ? validateSignupPassword(next) : '' })) }} onBlur={() => setFieldErrors((current) => ({ ...current, password: mode === 'signup' ? validateSignupPassword(password) || (password ? '' : 'Password is required.') : (!password ? 'Password is required.' : '') }))} placeholder={mode === 'signup' ? '8+ chars, upper, lower, number' : 'Your password'} maxLength={72} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? 'auth-password-error' : undefined} />{fieldErrors.password && <small className="field-error" id="auth-password-error">{fieldErrors.password}</small>}</label>
+          <label htmlFor="auth-password">Password<PasswordField id="auth-password" value={password} onChange={(e) => { const next = e.target.value; setPassword(next); setFieldErrors((current) => ({ ...current, password: mode === 'signup' ? validateSignupPassword(next) : '' })) }} placeholder={mode === 'signup' ? '8+ chars, upper, lower, number' : 'Your password'} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} ariaLabel="password" ariaInvalid={Boolean(fieldErrors.password)} ariaDescribedBy={fieldErrors.password ? 'auth-password-error' : undefined} />{fieldErrors.password && <small className="field-error" id="auth-password-error">{fieldErrors.password}</small>}</label>
           {error && <p className="form-error">{error}</p>}
           <button className="primary auth-submit" type="submit" disabled={loading}>{loading ? 'Please wait...' : (mode === 'login' ? 'Sign in' : 'Create account')}</button>
         </form>
@@ -615,9 +657,9 @@ function SettingsPage({ user, setUser, theme, setTheme, toast }) {
         <div className="setting-row password-settings">
           <div><strong>Change password</strong><span>Use a strong password with letters, numbers, and symbols.</span></div>
           <div className="password-fields">
-            <input type="password" value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} placeholder="Current password" autoComplete="current-password" aria-label="Current password" />
-            <input type="password" value={passwords.next} onChange={(e) => setPasswords({ ...passwords, next: e.target.value })} placeholder="New password" autoComplete="new-password" aria-label="New password" />
-            <input type="password" value={passwords.confirm} onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })} placeholder="Confirm new password" autoComplete="new-password" aria-label="Confirm new password" />
+            <PasswordField value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} placeholder="Current password" autoComplete="current-password" ariaLabel="Current password" />
+            <PasswordField value={passwords.next} onChange={(e) => setPasswords({ ...passwords, next: e.target.value })} placeholder="New password" autoComplete="new-password" ariaLabel="New password" />
+            <PasswordField value={passwords.confirm} onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })} placeholder="Confirm new password" autoComplete="new-password" ariaLabel="Confirm new password" />
             {passwordError && <small className="field-error">{passwordError}</small>}
             <button className="theme-toggle" onClick={changePassword} disabled={changingPassword}>{changingPassword ? 'Updating...' : 'Update password'}</button>
           </div>
