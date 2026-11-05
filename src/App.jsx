@@ -630,7 +630,7 @@ function TransactionsPage({ transactions, setTransactions, setModal, toast }) {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `ledgerly-transactions.${format}`
+      link.download = `monetra-transactions.${format}`
       document.body.appendChild(link)
       link.click()
       link.remove()

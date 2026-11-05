@@ -43,12 +43,28 @@ router.get('/', async (req, res, next) => {
   } catch (error) { next(error) }
 })
 
+const isValidIsoDate = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+}
+
 const buildExportFilter = (req) => {
   const filter = { user: req.userId }
   const { type, category, startDate, search } = req.query
   if (['income', 'expense'].includes(type)) filter.type = type
   if (category) filter.category = category
-  if (startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) filter.date = { $gte: startDate }
+  if (startDate) {
+    if (!isValidIsoDate(startDate)) {
+      const error = new Error('Enter a valid start date.')
+      error.status = 400
+      error.code = 'VALIDATION_ERROR'
+      error.fieldErrors = { startDate: 'Enter a valid date.' }
+      throw error
+    }
+    filter.date = { $gte: startDate }
+  }
   if (search?.trim()) {
     const safeSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     filter.$or = [
@@ -65,12 +81,25 @@ const escapeCsvCell = (value) => {
   return `"${text.replaceAll('"', '""')}"`
 }
 
+const formatCsvDate = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return ''
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 router.get('/export/csv', async (req, res, next) => {
   try {
     const transactions = await Transaction.find(buildExportFilter(req)).sort({ date: -1, createdAt: -1 }).lean()
     const rows = [
       ['Date', 'Type', 'Category', 'Note', 'Amount'],
-      ...transactions.map((item) => [item.date, item.type, item.category, item.note || '', item.amount]),
+      ...transactions.map((item) => [
+        formatCsvDate(item.date),
+        item.type === 'income' ? 'Income' : 'Expense',
+        item.category,
+        item.note || '',
+        Number(item.amount).toFixed(2),
+      ]),
     ]
     const csv = '\ufeff' + rows.map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')
     res.setHeader('Content-Type', 'text/csv; charset=utf-8')
@@ -95,11 +124,46 @@ router.get('/export/pdf', async (req, res, next) => {
     if (!transactions.length) {
       doc.text('No transactions found.')
     } else {
+      const columns = [
+        { label: 'Date', width: 78, value: (item) => formatCsvDate(item.date) },
+        { label: 'Type', width: 58, value: (item) => item.type === 'income' ? 'Income' : 'Expense' },
+        { label: 'Category', width: 94, value: (item) => item.category },
+        { label: 'Note', width: 195, value: (item) => item.note || '-' },
+        { label: 'Amount', width: 85, value: (item) => `${item.type === 'income' ? '+' : '-'} INR ${Number(item.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` },
+      ]
+      let y = doc.y
+      const drawHeader = () => {
+        doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff')
+        doc.rect(40, y, 510, 24).fill('#4f46e5')
+        let x = 40
+        for (const column of columns) {
+          doc.text(column.label, x + 4, y + 7, { width: column.width - 8, height: 14, lineBreak: false })
+          x += column.width
+        }
+        y += 24
+      }
+      drawHeader()
+
       transactions.forEach((item, index) => {
-        doc.fontSize(10)
-        const sign = item.type === 'income' ? '+' : '-'
-        doc.text(`${item.date}  |  ${item.category}  |  ${item.note || '-'}  |  ${sign} INR ${Number(item.amount).toLocaleString('en-IN')}`)
-        if (index % 5 === 4 && index < transactions.length - 1) doc.addPage()
+        const values = columns.map((column) => column.value(item))
+        doc.font('Helvetica').fontSize(8.5).fillColor('#111827')
+        const heights = values.map((value, columnIndex) =>
+          doc.heightOfString(value, { width: columns[columnIndex].width - 8 }),
+        )
+        const rowHeight = Math.max(30, ...heights.map((height) => height + 12))
+        if (y + rowHeight > 802) {
+          doc.addPage()
+          y = 50
+          drawHeader()
+        }
+        let x = 40
+        if (index % 2 === 1) doc.rect(40, y, 510, rowHeight).fill('#f3f4f6')
+        doc.fillColor('#111827')
+        values.forEach((value, columnIndex) => {
+          doc.text(value, x + 4, y + 6, { width: columns[columnIndex].width - 8, height: rowHeight - 12 })
+          x += columns[columnIndex].width
+        })
+        y += rowHeight
       })
     }
     doc.end()
