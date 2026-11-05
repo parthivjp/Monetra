@@ -6,7 +6,7 @@ export async function apiRequest(path, options = {}) {
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers || {}),
   }
-  if (token) headers.Authorization = `Bearer ${token}`
+  if (token) headers.Authorization = 'Bearer ' + token
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15000)

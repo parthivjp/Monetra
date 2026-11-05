@@ -14,11 +14,17 @@ const serverFolder = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.resolve(serverFolder, '../.env') })
 
 const app = express()
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1)
+}
 app.disable('x-powered-by')
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 app.use(cors({
   origin(origin, callback) {
-    const allowed = (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((value) => value.trim())
+    const allowed = (process.env.CLIENT_URL || 'http://localhost:5173,http://localhost:5174')
+      .split(',')
+      .map((value) => value.trim().replace(/\/$/, ''))
+      .filter(Boolean)
     if (!origin || allowed.includes(origin)) return callback(null, true)
     if (process.env.NODE_ENV !== 'production') {
       try {

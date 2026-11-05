@@ -623,7 +623,7 @@ function TransactionsPage({ transactions, setTransactions, setModal, toast }) {
     try {
       const token = localStorage.getItem(STORAGE.token)
       const response = await fetch(`${API_URL}/transactions/export/${format}?${params}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: token ? { Authorization: 'Bearer ' + token } : {},
       })
       if (!response.ok) throw new Error(`${format.toUpperCase()} export failed.`)
       const blob = await response.blob()
