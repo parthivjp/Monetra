@@ -63,6 +63,7 @@ button { cursor: pointer; }
 .auth-card input::placeholder, .password-fields input::placeholder, .profile-edit input::placeholder { color: #686e62; opacity: 1; }
 .auth-card input[aria-invalid="true"], .profile-edit input[aria-invalid="true"] { border-color: #b8523d; background: #fffaf8; box-shadow: 0 0 0 3px rgba(184,82,61,.08); }
 .form-error { margin: -6px 0 0; color: #b8523d; font-size: 12px; }
+.form-success { margin: -6px 0 0; color: #657c5c; font-size: 12px; font-weight: 700; }
 .field-error { color: #b8523d; font-size: 11px; font-weight: 600; margin-top: 2px; }
 .primary, .secondary { border: 0; border-radius: 8px; min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 13px; }
 .primary { background: #657c5c; color: white; box-shadow: 0 7px 16px rgba(101,124,92,.16); }

@@ -203,12 +203,14 @@ function AuthScreen({ onLogin }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [loading, setLoading] = useState(false)
 
   const submit = async (event) => {
     event.preventDefault()
     setError('')
+    setSuccess('')
     setFieldErrors({})
     const nextErrors = {}
     if (mode === 'signup') {
@@ -238,6 +240,15 @@ function AuthScreen({ onLogin }) {
         method: 'POST',
         body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
       })
+      if (mode === 'signup') {
+        localStorage.removeItem(STORAGE.token)
+        localStorage.removeItem(STORAGE.session)
+        setMode('login')
+        setPassword('')
+        setName('')
+        setSuccess(data.message || 'Account created successfully. Please sign in.')
+        return
+      }
       onLogin(data.user, data.token)
     } catch (err) {
       setError(err.message || 'The request could not be completed.')
@@ -293,11 +304,12 @@ function AuthScreen({ onLogin }) {
           <label>Email address<input type="email" value={email} onChange={(e) => { const next = e.target.value.replace(/\s/g, ''); setEmail(next); setFieldErrors((current) => ({ ...current, email: next && validateEmail(next) ? validateEmail(next) : '' })) }} onBlur={() => setFieldErrors((current) => ({ ...current, email: validateEmail(email) || '' }))} placeholder="you@example.com" maxLength={254} autoComplete="email" aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? 'auth-email-error' : undefined} />{fieldErrors.email && <small className="field-error" id="auth-email-error">{fieldErrors.email}</small>}</label>
           <label htmlFor="auth-password">Password<PasswordField id="auth-password" value={password} onChange={(e) => { const next = e.target.value; setPassword(next); setFieldErrors((current) => ({ ...current, password: mode === 'signup' ? validateSignupPassword(next) : '' })) }} placeholder={mode === 'signup' ? '8+ chars, upper, lower, number' : 'Your password'} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} ariaLabel="password" ariaInvalid={Boolean(fieldErrors.password)} ariaDescribedBy={fieldErrors.password ? 'auth-password-error' : undefined} />{fieldErrors.password && <small className="field-error" id="auth-password-error">{fieldErrors.password}</small>}</label>
           {error && <p className="form-error">{error}</p>}
+          {success && <p className="form-success" role="status">{success}</p>}
           <button className="primary auth-submit" type="submit" disabled={loading}>{loading ? 'Please wait...' : (mode === 'login' ? 'Sign in' : 'Create account')}</button>
         </form>
         <p className="auth-switch">
           {mode === 'login' ? 'New to Monetra?' : 'Already have an account?'}
-          <button onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}>
+          <button onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setSuccess('') }}>
             {mode === 'login' ? 'Create account' : 'Sign in'}
           </button>
         </p>

@@ -44,7 +44,10 @@ router.post('/signup', authRateLimit(), async (req, res, next) => {
     }
     const passwordHash = await bcrypt.hash(data.password, 12)
     const user = await User.create({ ...data, passwordHash })
-    res.status(201).json({ token: issueToken(user), user: { id: user._id, name: user.name, email: user.email } })
+    res.status(201).json({
+      message: 'Account created successfully. Please sign in.',
+      user: { id: user._id, name: user.name, email: user.email },
+    })
   } catch (error) { next(error) }
 })
 
