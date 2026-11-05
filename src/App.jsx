@@ -40,7 +40,7 @@ const STORAGE = {
 }
 
 const categories = {
-  expense: ['Housing', 'Food', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Education', 'Bills'],
+  expense: ['Housing', 'Food', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Education', 'Bills', 'Other'],
   income: ['Salary', 'Freelance', 'Investments', 'Gift'],
 }
 
@@ -629,42 +629,94 @@ function SettingsPage({ user, setUser, theme, setTheme, toast }) {
 }
 
 function TransactionModal({ close, transaction, addTransaction, updateTransaction }) {
+  const existingExpenseCategory = transaction?.type === 'expense' &&
+    !categories.expense.slice(0, -1).includes(transaction.category)
   const [form, setForm] = useState(transaction ? {
     type: transaction.type,
-    category: transaction.category,
+    category: existingExpenseCategory ? 'Other' : transaction.category,
+    customCategory: existingExpenseCategory ? transaction.category : '',
     amount: String(transaction.amount),
     date: transaction.date,
     note: transaction.note || '',
-  } : { type: 'expense', category: 'Food', amount: '', date: todayIso, note: '' })
+  } : { type: 'expense', category: 'Food', customCategory: '', amount: '', date: todayIso, note: '' })
   const [error, setError] = useState('')
-  const submit = (event) => {
+  const [fieldErrors, setFieldErrors] = useState({})
+
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') close()
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [close])
+
+  const submit = async (event) => {
     event.preventDefault()
     const amount = Number(form.amount)
+    const nextErrors = {}
     if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000000) {
-      setError('Enter an amount greater than 0 and no more than 1,000,000,000.')
-      return
+      nextErrors.amount = 'Enter an amount greater than 0 and no more than 1,000,000,000.'
     }
     if (!isValidDate(form.date)) {
-      setError('Enter a valid date.')
+      nextErrors.date = 'Select a valid transaction date.'
+    }
+    const selectedCategory = form.type === 'expense' && form.category === 'Other'
+      ? form.customCategory.trim()
+      : form.category
+    if (!selectedCategory || (form.type === 'expense' && form.category === 'Other' &&
+      (selectedCategory.length < 2 || selectedCategory.length > 40 || !/^[\p{L}\p{N} &/'-]+$/u.test(selectedCategory)))) {
+      nextErrors.category = 'Select a valid category.'
+    } else if (!categories[form.type].includes(form.category) && form.category !== 'Other') {
+      nextErrors.category = 'Select a valid category.'
+    }
+    if (form.type === 'expense' && form.category === 'Other') {
+      if (!form.customCategory.trim()) nextErrors.customCategory = 'Enter a custom category name.'
+      else if (form.customCategory.trim().length < 2) nextErrors.customCategory = 'Custom category must be at least 2 characters.'
+      else if (form.customCategory.trim().length > 40) nextErrors.customCategory = 'Custom category must be at most 40 characters.'
+      else if (!/^[\p{L}\p{N} &/'-]+$/u.test(form.customCategory.trim())) nextErrors.customCategory = 'Use letters, numbers, spaces, hyphens, apostrophes, or &.'
+    }
+    if (form.note.length > 500) {
+      nextErrors.note = 'Note must be at most 500 characters.'
+    }
+    setFieldErrors(nextErrors)
+    if (Object.keys(nextErrors).length) {
+      setError('Please correct the highlighted fields.')
       return
     }
     setError('')
-    const payload = { ...form, amount: Number(form.amount) }
-    if (transaction) updateTransaction(transaction._id || transaction.id, payload)
-    else addTransaction({ ...payload, id: Date.now() })
+    const payload = {
+      ...form,
+      category: selectedCategory,
+      customCategory: undefined,
+      amount: Number(form.amount),
+    }
+    const result = transaction
+      ? await updateTransaction(transaction._id || transaction.id, payload)
+      : await addTransaction({ ...payload, id: Date.now() })
+    if (result?.fieldErrors) {
+      setFieldErrors(result.fieldErrors)
+      setError(result.message || 'Please correct the highlighted fields.')
+    }
   }
-  const changeType = (type) => setForm((current) => ({ ...current, type, category: categories[type][0] }))
+  const changeType = (type) => setForm((current) => ({ ...current, type, category: categories[type][0], customCategory: '' }))
+  const clearFieldError = (field) => setFieldErrors((current) => ({ ...current, [field]: '' }))
   return (
     <div className="modal-backdrop" onMouseDown={close}>
       <div className="modal" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="modal-head"><div><p>NEW ENTRY</p><h2>Add transaction</h2></div><button onClick={close}><X size={20} /></button></div>
+        <div className="modal-head"><div><p>{transaction ? 'UPDATE ENTRY' : 'NEW ENTRY'}</p><h2>{transaction ? 'Edit transaction' : 'Add transaction'}</h2></div><button type="button" aria-label="Close transaction form" onClick={close}><X size={20} /></button></div>
         <form onSubmit={submit}>
           <div className="type-toggle"><button type="button" className={form.type === 'expense' ? 'active expense' : ''} onClick={() => changeType('expense')}>Expense</button><button type="button" className={form.type === 'income' ? 'active income' : ''} onClick={() => changeType('income')}>Income</button></div>
-          <label>Amount<div className="amount-input"><span>₹</span><input autoFocus type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" /></div></label>
-          <div className="form-grid"><label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{categories[form.type].map((item) => <option key={item}>{item}</option>)}</select></label><label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label></div>
-          <label>Note<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value.slice(0, 500) })} placeholder="What was this for?" maxLength={500} /></label>
+          <label htmlFor="transaction-amount">Amount<div className={`amount-input${fieldErrors.amount ? ' invalid' : ''}`}><span>₹</span><input id="transaction-amount" autoFocus type="number" inputMode="decimal" min="0.01" max="1000000000" step="0.01" value={form.amount} onChange={(e) => { setForm({ ...form, amount: e.target.value }); clearFieldError('amount') }} placeholder="0.00" aria-invalid={Boolean(fieldErrors.amount)} aria-describedby={fieldErrors.amount ? 'transaction-amount-error' : undefined} /></div>{fieldErrors.amount && <small className="field-error" id="transaction-amount-error">{fieldErrors.amount}</small>}</label>
+          <div className="form-grid">
+            <label htmlFor="transaction-category">Category<select id="transaction-category" value={form.category} onChange={(e) => { const category = e.target.value; setForm((current) => ({ ...current, category, customCategory: category === 'Other' ? current.customCategory : '' })); clearFieldError('category'); clearFieldError('customCategory') }} aria-invalid={Boolean(fieldErrors.category)} aria-describedby={fieldErrors.category ? 'transaction-category-error' : undefined}>{categories[form.type].map((item) => <option key={item}>{item}</option>)}</select>{fieldErrors.category && <small className="field-error" id="transaction-category-error">{fieldErrors.category}</small>}</label>
+            <label htmlFor="transaction-date">Date<input id="transaction-date" type="date" value={form.date} onChange={(e) => { setForm({ ...form, date: e.target.value }); clearFieldError('date') }} aria-invalid={Boolean(fieldErrors.date)} aria-describedby={fieldErrors.date ? 'transaction-date-error' : undefined} />{fieldErrors.date && <small className="field-error" id="transaction-date-error">{fieldErrors.date}</small>}</label>
+          </div>
+          {form.type === 'expense' && form.category === 'Other' && (
+            <label htmlFor="transaction-custom-category">Custom category<input id="transaction-custom-category" value={form.customCategory} onChange={(e) => { setForm({ ...form, customCategory: e.target.value.slice(0, 40) }); clearFieldError('customCategory') }} placeholder="e.g. Pet care" maxLength={40} autoComplete="off" aria-invalid={Boolean(fieldErrors.customCategory)} aria-describedby={fieldErrors.customCategory ? 'transaction-custom-category-error' : 'transaction-custom-category-count'} /><span className="note-count" id="transaction-custom-category-count">{form.customCategory.length}/40</span>{fieldErrors.customCategory && <small className="field-error" id="transaction-custom-category-error">{fieldErrors.customCategory}</small>}</label>
+          )}
+          <label htmlFor="transaction-note">Note<span className="optional-label">Optional</span><input id="transaction-note" value={form.note} onChange={(e) => { setForm({ ...form, note: e.target.value.slice(0, 500) }); clearFieldError('note') }} placeholder="What was this for?" maxLength={500} aria-invalid={Boolean(fieldErrors.note)} aria-describedby={fieldErrors.note ? 'transaction-note-error' : 'transaction-note-count'} /><span className="note-count" id="transaction-note-count">{form.note.length}/500</span>{fieldErrors.note && <small className="field-error" id="transaction-note-error">{fieldErrors.note}</small>}</label>
           {error && <p className="form-error">{error}</p>}
-          <button className="primary modal-submit" type="submit">Add transaction</button>
+          <button className="primary modal-submit" type="submit">{transaction ? 'Save changes' : 'Add transaction'}</button>
         </form>
       </div>
     </div>
@@ -751,6 +803,7 @@ function App() {
       setToast('Transaction added')
     } catch (error) {
       setToast(error.message || 'Could not add the transaction.')
+      return { message: error.message || 'Could not add the transaction.', fieldErrors: error.fieldErrors || {} }
     }
   }
 
@@ -767,6 +820,7 @@ function App() {
       setToast('Transaction updated')
     } catch (error) {
       setToast(error.message || 'Could not update the transaction.')
+      return { message: error.message || 'Could not update the transaction.', fieldErrors: error.fieldErrors || {} }
     }
   }
 

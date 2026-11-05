@@ -8,14 +8,9 @@ import { requireAuth } from '../middleware.js'
 const router = Router()
 router.use(requireAuth)
 
-const transactionCategories = [
-  'Housing', 'Food', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Education', 'Bills',
-  'Salary', 'Freelance', 'Investments', 'Gift',
-]
-
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense'], { error: 'Type must be income or expense.' }),
-  category: z.enum(transactionCategories, { error: 'Select a valid transaction category.' }),
+  category: z.string().trim().min(2, 'Category must be at least 2 characters.').max(40, 'Category must be at most 40 characters.').regex(/^[\p{L}\p{N} &/'-]+$/u, "Category can contain letters, numbers, spaces, hyphens, apostrophes, and &."),
   amount: z.coerce.number().positive('Amount must be greater than zero.').max(1000000000),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Enter a valid date.').refine((value) => {
     const [year, month, day] = value.split('-').map(Number)
