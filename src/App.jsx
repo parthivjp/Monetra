@@ -37,6 +37,17 @@ const STORAGE = {
   cashFlowRange: 'finance-cash-flow-range',
 }
 
+function BrandMark({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <rect width="48" height="48" rx="14" fill="#657C5C" />
+      <path d="M12 32.5V20.8C12 17 14.4 14.5 17.8 14.5H30.2C33.6 14.5 36 17 36 20.8V32.5" stroke="#F8F5EA" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M12 26.5L19 21L24 26.5L31.7 18.5H36" stroke="#D8C69A" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="36" cy="18.5" r="2.8" fill="#D8C69A" />
+    </svg>
+  )
+}
+
 const categories = {
   expense: ['Housing', 'Food', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Education', 'Bills', 'Other'],
   income: ['Salary', 'Freelance', 'Investments', 'Gift'],
@@ -239,7 +250,7 @@ function AuthScreen({ onLogin }) {
   return (
     <main className="auth-page">
       <section className="auth-brand">
-        <div className="brand-mark"><WalletCards size={22} /></div>
+        <div className="brand-mark"><BrandMark size={22} /></div>
         <span>Monetra</span>
       </section>
       <section className="auth-card">
@@ -305,7 +316,7 @@ function Sidebar({ page, setPage, user, onLogout, mobileOpen, setMobileOpen }) {
   return (
     <aside className={`sidebar ${mobileOpen ? 'open' : ''}`} aria-label="Main navigation">
       <div className="sidebar-brand">
-        <div className="brand-mark"><WalletCards size={20} /></div>
+        <div className="brand-mark"><BrandMark size={20} /></div>
         <span>Monetra</span>
         <button className="mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={20} /></button>
       </div>
@@ -1014,7 +1025,7 @@ function App() {
       <Sidebar page={page} setPage={setPage} user={session} onLogout={logout} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       {mobileOpen && <button className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <main className="main-content">
-        <button className="mobile-menu" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><WalletCards size={20} /></button>
+        <button className="mobile-menu" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><BrandMark size={20} /></button>
         {page === 'dashboard' && <Dashboard transactions={transactions} user={session} setPage={setPage} setModal={setModal} />}
         {page === 'transactions' && <TransactionsPage transactions={transactions} setTransactions={setTransactions} setModal={setModal} toast={setToast} />}
         {page === 'budgets' && <BudgetsPage transactions={transactions} toast={setToast} />}
