@@ -15,6 +15,7 @@
   --green: #657c5c;
   --orange: #e8a44f;
   --chart-grid: #e7e4dc;
+  --chart-cursor: rgba(101, 124, 92, 0.08);
 }
 
 :root[data-theme='dark'] {
@@ -27,6 +28,7 @@
   --muted: #bdc2b6;
   --border: #343731;
   --chart-grid: #343731;
+  --chart-cursor: rgba(236, 238, 232, 0.08);
 }
 
 * { box-sizing: border-box; }
@@ -104,6 +106,22 @@ button { cursor: pointer; }
 .panel { border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
 .cash-flow, .spending { height: 350px; padding: 22px; }
 .panel-head { min-height: 48px; display: flex; align-items: flex-start; justify-content: space-between; }
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.cash-flow-range { position: relative; display: flex; align-items: center; color: var(--muted); }
+.cash-flow-range select {
+  height: 34px;
+  min-width: 128px;
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--muted);
+  padding: 0 30px 0 10px;
+  font-size: 11px;
+  outline: none;
+}
+.cash-flow-range select:focus { border-color: #7c9a68; box-shadow: 0 0 0 3px rgba(124,154,104,.12); }
+.cash-flow-range svg { position: absolute; right: 8px; pointer-events: none; }
 .panel-head > div > span { font-size: 9px; letter-spacing: .15em; font-weight: 800; color: #aaa795; }
 .panel-head h2 { margin: 4px 0 0; font-family: 'Newsreader', serif; font-size: 20px; color: var(--text); }
 .panel-head > button:not(.text-button) { height: 34px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel); color: var(--muted); display: inline-flex; align-items: center; gap: 4px; padding: 0 10px; font-size: 11px; }

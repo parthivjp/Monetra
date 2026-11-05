@@ -48,14 +48,14 @@ const categories = {
 
 const colors = ['#f97316', '#fbbf24', '#7c9a68', '#5b7c99', '#b779a4', '#9a8b7a', '#67a6a0', '#d08370']
 const defaultBudgets = {
-  Housing: 0,
-  Food: 0,
-  Transport: 0,
-  Entertainment: 0,
-  Shopping: 0,
-  Health: 0,
-  Education: 0,
-  Bills: 0,
+  Housing: '',
+  Food: '',
+  Transport: '',
+  Entertainment: '',
+  Shopping: '',
+  Health: '',
+  Education: '',
+  Bills: '',
 }
 
 const money = (value) =>
@@ -344,6 +344,7 @@ function StatCard({ label, value, icon: Icon, tone, trend }) {
 }
 
 function Dashboard({ transactions, user, setPage, setModal }) {
+  const [cashFlowRange, setCashFlowRange] = useState('6')
   const totals = useMemo(() => {
     const income = transactions.filter((item) => item.type === 'income').reduce((sum, item) => sum + Number(item.amount), 0)
     const expenses = transactions.filter((item) => item.type === 'expense').reduce((sum, item) => sum + Number(item.amount), 0)
@@ -385,14 +386,52 @@ function Dashboard({ transactions, user, setPage, setModal }) {
     const values = {}
     transactions.forEach((item) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date || '')) return
-      const [year, monthNumber] = item.date.slice(0, 7).split('-')
-      const monthKey = item.date.slice(0, 7)
-      const month = new Date(Number(year), Number(monthNumber) - 1, 1).toLocaleDateString('en-IN', { month: 'short' })
-      values[monthKey] ||= { month, income: 0, expense: 0 }
-      values[monthKey][item.type] += Number(item.amount)
+      const amount = Number(item.amount)
+      if (Number.isFinite(amount) && amount > 0 && ['income', 'expense'].includes(item.type)) {
+        values[item.date] ||= { income: 0, expense: 0 }
+        values[item.date][item.type] += amount
+      }
     })
-    return Object.keys(values).sort().slice(-6).map((key) => values[key])
-  }, [transactions])
+
+    if (cashFlowRange === 'week' || cashFlowRange === 'month') {
+      const dayCount = cashFlowRange === 'week' ? 7 : 30
+      const [currentYear, currentMonth, currentDay] = todayIso.split('-').map(Number)
+      return Array.from({ length: dayCount }, (_, index) => {
+        const date = new Date(currentYear, currentMonth - 1, currentDay - (dayCount - 1 - index))
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+        const label = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+        return values[key] ? { label, income: values[key].income, expense: values[key].expense } : { label, income: 0, expense: 0 }
+      })
+    }
+
+    const monthCount = Number(cashFlowRange)
+    const monthlyValues = {}
+    transactions.forEach((item) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date || '')) return
+      const monthKey = item.date.slice(0, 7)
+      monthlyValues[monthKey] ||= { income: 0, expense: 0 }
+      const amount = Number(item.amount)
+      if (Number.isFinite(amount) && amount > 0 && ['income', 'expense'].includes(item.type)) {
+        monthlyValues[monthKey][item.type] += amount
+      }
+    })
+    const [currentYear, currentMonth] = todayIso.slice(0, 7).split('-').map(Number)
+    return Array.from({ length: monthCount }, (_, index) => {
+      const date = new Date(currentYear, currentMonth - 1 - (monthCount - 1 - index), 1)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const month = date.toLocaleDateString('en-IN', {
+        month: 'short',
+        ...(monthCount === 12 ? { year: '2-digit' } : {}),
+      })
+      return monthlyValues[key] ? { month, ...monthlyValues[key] } : { month, income: 0, expense: 0 }
+    })
+  }, [transactions, cashFlowRange])
+
+  const chartPeriodLabel = cashFlowRange === 'week'
+    ? 'the last 7 days'
+    : cashFlowRange === 'month'
+      ? 'the last 30 days'
+      : `the last ${cashFlowRange} months`
 
   const recent = [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
 
@@ -409,16 +448,40 @@ function Dashboard({ transactions, user, setPage, setModal }) {
       </section>
       <section className="charts-grid">
         <article className="panel cash-flow">
-          <div className="panel-head"><div><span>CASH FLOW</span><h2>Monthly overview</h2></div><button>Last 6 months <ChevronDown size={15} /></button></div>
-          <div className="chart-wrap">
+          <div className="panel-head">
+            <div><span>CASH FLOW</span><h2>{cashFlowRange === 'week' || cashFlowRange === 'month' ? 'Daily overview' : 'Monthly overview'}</h2></div>
+            <label className="cash-flow-range">
+              <span className="sr-only">Cash flow period</span>
+              <select value={cashFlowRange} onChange={(event) => setCashFlowRange(event.target.value)} aria-label="Cash flow period">
+                <option value="week">Last week</option>
+                <option value="month">Last month</option>
+                <option value={3}>Last 3 months</option>
+                <option value={6}>Last 6 months</option>
+                <option value={12}>Last 12 months</option>
+              </select>
+              <ChevronDown size={15} aria-hidden="true" />
+            </label>
+          </div>
+          <div className="chart-wrap" role="img" aria-label={`Income and expenses for ${chartPeriodLabel}`}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData} barGap={4}>
+              <BarChart data={monthlyData} barGap={4} barCategoryGap="18%" margin={{ top: 8, right: 4, bottom: 0, left: 0 }} accessibilityLayer>
                 <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₹${value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : value}`} />
-                <Tooltip formatter={(value) => money(value)} contentStyle={{ borderRadius: 12, border: '1px solid var(--border)' }} />
-                <Bar dataKey="income" fill="#7c9a68" radius={[5, 5, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="expense" fill="#efb35f" radius={[5, 5, 0, 0]} maxBarSize={28} />
+                <XAxis
+                  dataKey={cashFlowRange === 'week' || cashFlowRange === 'month' ? 'label' : 'month'}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={cashFlowRange === 'month' ? 4 : 0}
+                  tick={{ fill: 'var(--muted)', fontSize: 10 }}
+                />
+                <YAxis axisLine={false} tickLine={false} width={48} domain={[0, 'auto']} allowDecimals={false} tick={{ fill: 'var(--muted)', fontSize: 10 }} tickFormatter={(value) => `₹${value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : value}`} />
+                <Tooltip
+                  formatter={(value, name) => [money(value), name === 'income' ? 'Income' : 'Expense']}
+                  contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--text)' }}
+                  labelStyle={{ color: 'var(--text)', fontWeight: 700 }}
+                  cursor={{ fill: 'var(--chart-cursor)' }}
+                />
+                <Bar name="Income" dataKey="income" fill="#7c9a68" radius={[5, 5, 0, 0]} maxBarSize={28} isAnimationActive={false} />
+                <Bar name="Expense" dataKey="expense" fill="#efb35f" radius={[5, 5, 0, 0]} maxBarSize={28} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -538,18 +601,33 @@ function BudgetsPage({ transactions, toast }) {
       .then((data) => {
         if (!data.budgets?.length) return
         const mapped = { ...defaultBudgets }
-        data.budgets.forEach((item) => { mapped[item.category] = item.limit })
+        data.budgets.forEach((item) => {
+          const limit = Number(item.limit)
+          mapped[item.category] = limit > 0 ? String(limit) : ''
+        })
         setBudgets(mapped)
       })
       .catch((error) => toast(error.message || 'Could not load budgets.'))
   }, [toast])
   const setBudget = (category, value) => {
-    const next = { ...budgets, [category]: Number(value) }
+    let cleaned = value.replace(/[^\d.]/g, '')
+    const firstDecimal = cleaned.indexOf('.')
+    if (firstDecimal >= 0) {
+      cleaned = `${cleaned.slice(0, firstDecimal + 1)}${cleaned.slice(firstDecimal + 1).replace(/\./g, '').slice(0, 2)}`
+    }
+    if (cleaned.startsWith('.')) cleaned = `0${cleaned}`
+    if (!cleaned.includes('.')) cleaned = cleaned.replace(/^0+(?=\d)/, '')
+    if (cleaned.includes('.')) {
+      const [integer, decimal = ''] = cleaned.split('.')
+      cleaned = `${integer.replace(/^0+(?=\d)/, '')}.${decimal}`
+    }
+    if (cleaned !== '' && cleaned !== '0.' && Number(cleaned) > 1000000000) cleaned = '1000000000'
+    const next = { ...budgets, [category]: cleaned }
     setBudgets(next)
   }
   const saveBudgets = async () => {
     const invalid = Object.entries(budgets).find(([, limit]) =>
-      limit === '' || !Number.isFinite(Number(limit)) || Number(limit) < 0 || Number(limit) > 1000000000,
+      limit !== '' && (!Number.isFinite(Number(limit)) || Number(limit) < 0 || Number(limit) > 1000000000),
     )
     if (invalid) {
       toast('Budget limits must be between 0 and 1,000,000,000.')
@@ -558,7 +636,7 @@ function BudgetsPage({ transactions, toast }) {
     try {
       await apiRequest('/budgets', {
         method: 'PUT',
-        body: JSON.stringify({ budgets: Object.entries(budgets).map(([category, limit]) => ({ category, limit })) }),
+        body: JSON.stringify({ budgets: Object.entries(budgets).map(([category, limit]) => ({ category, limit: Number(limit || 0) })) }),
       })
       toast('Budgets saved')
     } catch (error) {
@@ -580,7 +658,7 @@ function BudgetsPage({ transactions, toast }) {
               <div className="budget-title"><div className="budget-dot" style={{ background: colors[index % colors.length] }} /><h2>{category}</h2></div>
               <div className="budget-amount"><strong>{money(spent)}</strong><span>of {money(limit)}</span></div>
               <div className="progress"><span style={{ width: `${percent}%`, background: percent >= 90 ? '#d66b4f' : colors[index % colors.length] }} /></div>
-              <label>Monthly limit<div className="money-input"><span>₹</span><input type="number" min="0" max="1000000000" step="0.01" value={limit} onChange={(e) => setBudget(category, e.target.value)} /></div></label>
+              <label htmlFor={`budget-limit-${category}`}>Monthly limit<div className="money-input"><span>₹</span><input id={`budget-limit-${category}`} type="text" inputMode="decimal" autoComplete="off" placeholder="0" value={limit} onFocus={(event) => event.currentTarget.select()} onChange={(e) => setBudget(category, e.target.value)} onBlur={(event) => { const value = event.target.value.trim(); if (value === '' || value === '0.' ) setBudget(category, ''); else setBudget(category, String(Number(value))) }} /></div></label>
             </article>
           )
         })}
