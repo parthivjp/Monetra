@@ -46,3 +46,45 @@ test('signup validates name, email, and password before API submission', async (
   await expect(page.getByText('Enter a valid email address.')).toBeVisible()
   await expect(page.getByText('Password must be at least 8 characters.')).toBeVisible()
 })
+
+test('login remains readable when dark theme preference is saved', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('finance-theme', JSON.stringify('dark')))
+  await page.goto('/')
+
+  const styles = await page.evaluate(() => {
+    const card = getComputedStyle(document.querySelector('.auth-card'))
+    const input = getComputedStyle(document.querySelector('.auth-card input'))
+    const label = getComputedStyle(document.querySelector('.auth-card label'))
+    return { cardBackground: card.backgroundColor, inputBackground: input.backgroundColor, labelColor: label.color }
+  })
+
+  expect(styles.cardBackground).toBe('rgb(252, 251, 248)')
+  expect(styles.inputBackground).toBe('rgb(255, 255, 255)')
+  expect(styles.labelColor).toBe('rgb(69, 76, 64)')
+
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByText('Email address is required.')).toBeVisible()
+})
+
+test('signup remains centered, readable, and overflow-free on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Create account' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Create your account.' })).toBeVisible()
+  await expect(page.getByLabel('Full name')).toBeVisible()
+  await expect(page.getByLabel('Email address')).toBeVisible()
+
+  const layout = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: document.documentElement.clientWidth,
+    cardWidth: document.querySelector('.auth-card')?.getBoundingClientRect().width ?? 0,
+  }))
+  expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth)
+  expect(layout.cardWidth).toBeLessThanOrEqual(layout.viewportWidth)
+
+  const placeholder = await page.getByLabel('Email address').evaluate((input) =>
+    getComputedStyle(input, '::placeholder').color
+  )
+  expect(placeholder).toBe('rgb(112, 118, 106)')
+})

@@ -28,4 +28,6 @@ test('update budgets and profile, then verify persistence after reload', async (
   await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible()
   await page.getByRole('button', { name: 'Settings' }).click()
   await expect(page.getByLabel('Full name')).toHaveValue('Playwright Morgan')
+  await expect(page.getByText('Cloud data')).toHaveCount(0)
+  await expect(page.getByText('Connected', { exact: true })).toHaveCount(0)
 })

@@ -20,7 +20,18 @@ app.use(cors({
   origin(origin, callback) {
     const allowed = (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((value) => value.trim())
     if (!origin || allowed.includes(origin)) return callback(null, true)
-    return callback(new Error('Origin is not allowed by CORS policy'))
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        const url = new URL(origin)
+        if (['localhost', '127.0.0.1'].includes(url.hostname) && ['http:', 'https:'].includes(url.protocol)) {
+          return callback(null, true)
+        }
+      } catch {}
+    }
+    const error = new Error('Origin is not allowed by CORS policy.')
+    error.status = 403
+    error.code = 'CORS_ORIGIN_NOT_ALLOWED'
+    return callback(error)
   },
   credentials: true,
 }))

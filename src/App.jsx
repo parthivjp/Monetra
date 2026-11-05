@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Moon,
+  Pencil,
   PieChart as PieChartIcon,
   Plus,
   ReceiptText,
@@ -407,7 +408,7 @@ function Dashboard({ transactions, user, setPage, setModal }) {
   )
 }
 
-function TransactionList({ transactions, compact = false, onDelete }) {
+function TransactionList({ transactions, compact = false, onDelete, onEdit }) {
   if (!transactions.length) return <div className="empty-state">No transactions match your filters.</div>
   return (
     <div className={`transaction-list ${compact ? 'compact' : ''}`}>
@@ -417,7 +418,7 @@ function TransactionList({ transactions, compact = false, onDelete }) {
           <div className="transaction-main"><strong>{item.note || item.category}</strong><span>{item.category}</span></div>
           <div className="transaction-date">{new Date(`${item.date}T12:00:00`).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
           <strong className={`amount ${item.type}`}>{item.type === 'income' ? '+' : '-'}{money(item.amount)}</strong>
-          {!compact && <button className="delete-button" aria-label={`Delete ${item.note}`} onClick={() => onDelete(item._id || item.id)}><Trash2 size={17} /></button>}
+          {!compact && <div className="transaction-actions"><button className="edit-button" aria-label={`Edit ${item.note || item.category}`} onClick={() => onEdit(item)}><Pencil size={16} /></button><button className="delete-button" aria-label={`Delete ${item.note || item.category}`} onClick={() => onDelete(item._id || item.id)}><Trash2 size={17} /></button></div>}
         </div>
       ))}
     </div>
@@ -482,7 +483,7 @@ function TransactionsPage({ transactions, setTransactions, setModal, toast }) {
         <select value={category} onChange={(e) => setCategory(e.target.value)}><option value="all">All categories</option>{allCategories.map((item) => <option key={item}>{item}</option>)}</select>
         <input aria-label="From date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
       </section>
-      <section className="panel transaction-panel"><TransactionList transactions={filtered} onDelete={deleteTransaction} /></section>
+      <section className="panel transaction-panel"><TransactionList transactions={filtered} onDelete={deleteTransaction} onEdit={(transaction) => setModal(transaction)} /></section>
     </div>
   )
 }
@@ -622,14 +623,19 @@ function SettingsPage({ user, setUser, theme, setTheme, toast }) {
           </div>
         </div>
         <div className="setting-row"><div><strong>Appearance</strong><span>Choose how Monetra looks on this device.</span></div><button className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}{theme === 'light' ? 'Dark mode' : 'Light mode'}</button></div>
-        <div className="setting-row"><div><strong>Cloud data</strong><span>Transactions and budgets are stored securely in MongoDB.</span></div><span className="status-pill">Connected</span></div>
       </section>
     </div>
   )
 }
 
-function TransactionModal({ close, addTransaction }) {
-  const [form, setForm] = useState({ type: 'expense', category: 'Food', amount: '', date: todayIso, note: '' })
+function TransactionModal({ close, transaction, addTransaction, updateTransaction }) {
+  const [form, setForm] = useState(transaction ? {
+    type: transaction.type,
+    category: transaction.category,
+    amount: String(transaction.amount),
+    date: transaction.date,
+    note: transaction.note || '',
+  } : { type: 'expense', category: 'Food', amount: '', date: todayIso, note: '' })
   const [error, setError] = useState('')
   const submit = (event) => {
     event.preventDefault()
@@ -643,7 +649,9 @@ function TransactionModal({ close, addTransaction }) {
       return
     }
     setError('')
-    addTransaction({ ...form, id: Date.now(), amount: Number(form.amount) })
+    const payload = { ...form, amount: Number(form.amount) }
+    if (transaction) updateTransaction(transaction._id || transaction.id, payload)
+    else addTransaction({ ...payload, id: Date.now() })
   }
   const changeType = (type) => setForm((current) => ({ ...current, type, category: categories[type][0] }))
   return (
@@ -746,6 +754,22 @@ function App() {
     }
   }
 
+  const updateTransaction = async (id, transaction) => {
+    try {
+      const data = await apiRequest(`/transactions/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(transaction),
+      })
+      setTransactions((current) => current.map((item) =>
+        (item._id || item.id) === id ? data.transaction : item,
+      ))
+      setModal(false)
+      setToast('Transaction updated')
+    } catch (error) {
+      setToast(error.message || 'Could not update the transaction.')
+    }
+  }
+
   if (!session) return <><AuthScreen onLogin={login} /><Toast message={toast} onDone={() => setToast('')} /></>
 
   return (
@@ -759,7 +783,7 @@ function App() {
         {page === 'budgets' && <BudgetsPage transactions={transactions} toast={setToast} />}
         {page === 'settings' && <SettingsPage user={session} setUser={updateSessionUser} theme={theme} setTheme={setTheme} toast={setToast} />}
       </main>
-      {modal && <TransactionModal close={() => setModal(false)} addTransaction={addTransaction} />}
+      {modal && <TransactionModal close={() => setModal(false)} transaction={modal === true ? null : modal} addTransaction={addTransaction} updateTransaction={updateTransaction} />}
       <Toast message={toast} onDone={() => setToast('')} />
     </div>
   )
