@@ -724,7 +724,7 @@ function BudgetsPage({ transactions, toast }) {
   }
   return (
     <div className="page">
-      <header className="page-header"><div><p>PLANNING</p><h1>Monthly budgets</h1></div><button className="primary" onClick={saveBudgets}>Save budgets</button></header>
+      <header className="page-header"><div><p>PLANNING</p><h1>Monthly budgets</h1></div><button className="primary budget-save-button" onClick={saveBudgets}>Save budgets</button></header>
       <section className="budget-grid">
         {Object.entries(budgets).map(([category, limit], index) => {
           const spent = transactions

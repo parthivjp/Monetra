@@ -368,6 +368,12 @@ button { cursor: pointer; }
   .page-header { align-items: flex-end; }
   .page-header h1 { font-size: 32px; }
   .page-header .primary { width: 44px; padding: 0; font-size: 0; }
+  .budget-save-button {
+    width: auto !important;
+    min-width: 104px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
+  }
   .header-actions .secondary { font-size: 0; width: 44px; padding: 0; }
   .stats-grid { grid-template-columns: 1fr; }
   .stat-card { min-height: 106px; }
@@ -670,24 +676,78 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 @media (max-width: 480px) {
-  .page { padding: 22px 12px 32px; }
+  .page { padding: 64px 12px 32px; }
   .mobile-menu {
     top: max(12px, env(safe-area-inset-top));
     right: 12px;
   }
-  .page-header { padding-right: 48px; }
+  .page-header {
+    padding-right: 0;
+    min-height: 64px;
+    align-items: center;
+    gap: 10px;
+  }
   .page-header h1 { overflow-wrap: anywhere; }
   .page-header .primary {
     min-width: 44px;
     width: 44px;
     height: 44px;
+    flex: 0 0 44px;
+  }
+  .page-header .budget-save-button {
+    width: auto !important;
+    min-width: 104px !important;
+    flex-basis: 104px !important;
+    padding: 0 12px !important;
+    font-size: 12px !important;
   }
   .page-header .header-actions {
-    width: 44px;
+    width: auto;
+    max-width: none;
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
     gap: 6px;
   }
   .header-actions .secondary {
     width: 44px;
+    flex: 0 0 44px;
+  }
+  .page-header > div:first-child {
+    min-width: 0;
+  }
+  .page-header h1 {
+    max-width: 190px;
+    line-height: 1.05;
+  }
+  .header-actions .secondary {
+    min-width: 44px;
+  }
+  .stats-grid {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .stat-card {
+    min-height: 96px;
+    padding: 16px;
+  }
+  .stat-copy strong {
+    font-size: 26px;
+  }
+  .charts-grid {
+    gap: 10px;
+  }
+  .cash-flow, .spending {
+    border-radius: 10px;
+  }
+  .panel-head {
+    min-height: 44px;
+  }
+  .cash-flow-range select {
+    min-width: 112px;
+    width: 112px;
+  }
+  .cash-flow-chart {
+    grid-template-columns: 52px minmax(0, 1fr);
   }
   .filters {
     grid-template-columns: minmax(0, 1fr);
@@ -708,6 +768,15 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     opacity: 1;
   }
   .transaction-row:not(.compact-row) { min-height: 78px; }
+  .edit-button, .delete-button {
+    opacity: 1;
+  }
+  .transaction-row .amount {
+    font-size: 12px;
+  }
+  .transaction-main strong {
+    font-size: 12px;
+  }
   .category-list { gap: 6px 8px; }
   .category-list div { font-size: 9px; }
   .category-list strong { font-size: 9px; }
