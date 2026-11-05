@@ -82,10 +82,32 @@ const escapeCsvCell = (value) => {
 }
 
 const formatCsvDate = (value) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return ''
-  const [year, month, day] = value.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  let year
+  let month
+  let day
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim())) {
+    const isoDate = String(value).trim().slice(0, 10).split('-').map(Number)
+    year = isoDate[0]
+    month = isoDate[1]
+    day = isoDate[2]
+  } else if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    year = value.getUTCFullYear()
+    month = value.getUTCMonth() + 1
+    day = value.getUTCDate()
+  } else if (/^\d{4}-/.test(String(value || ''))) {
+    const date = new Date(String(value))
+    if (Number.isNaN(date.getTime())) return ''
+    year = date.getUTCFullYear()
+    month = value instanceof Date ? date.getUTCMonth() + 1 : Number(String(value).slice(5, 7))
+    day = value instanceof Date ? date.getUTCDate() : Number(String(value).slice(8, 10))
+  } else {
+    return ''
+  }
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  if (!year || !month || !day || month < 1 || month > 12 || day < 1 || day > 31) return ''
+  return `${String(day).padStart(2, '0')}-${monthNames[month - 1]}-${String(year).slice(-2)}`
 }
 
 router.get('/export/csv', async (req, res, next) => {
