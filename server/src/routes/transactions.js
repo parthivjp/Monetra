@@ -4,9 +4,12 @@ import mongoose from 'mongoose'
 import PDFDocument from 'pdfkit'
 import Transaction from '../models/Transaction.js'
 import { requireAuth } from '../middleware.js'
+import { getTransactionSummary } from '../controllers/transactions.js'
 
 const router = Router()
 router.use(requireAuth)
+
+router.get('/summary', getTransactionSummary)
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense'], { error: 'Type must be income or expense.' }),

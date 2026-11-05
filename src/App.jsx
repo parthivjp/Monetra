@@ -21,16 +21,11 @@ import {
   X,
 } from 'lucide-react'
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
   Cell,
   Pie,
   PieChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
 } from 'recharts'
 import './App.css'
 import { API_URL, apiRequest } from './api.js'
@@ -39,6 +34,7 @@ const STORAGE = {
   session: 'finance-session',
   token: 'finance-token',
   theme: 'finance-theme',
+  cashFlowRange: 'finance-cash-flow-range',
 }
 
 const categories = {
@@ -343,8 +339,61 @@ function StatCard({ label, value, icon: Icon, tone, trend }) {
   )
 }
 
+function CashFlowChart({ data, periodLabel, error }) {
+  const maxValue = Math.max(
+    1,
+    ...data.flatMap((item) => [Number(item.income) || 0, Number(item.expense) || 0]),
+  )
+  const hasData = data.some((item) => Number(item.income) > 0 || Number(item.expense) > 0)
+
+  return (
+    <div className="cash-flow-chart" role="img" aria-label={`Income and expenses for ${periodLabel}`}>
+      <div className="cash-flow-y-axis" aria-hidden="true">
+        {[1, .75, .5, .25, 0].map((part) => (
+          <span key={part}>{money(maxValue * part)}</span>
+        ))}
+      </div>
+      <div className="cash-flow-bars">
+        <div className="cash-flow-gridlines" aria-hidden="true">
+          {[0, 1, 2, 3, 4].map((line) => <i key={line} />)}
+        </div>
+        {data.map((item, index) => {
+          const income = Number(item.income) || 0
+          const expense = Number(item.expense) || 0
+          return (
+            <div className="cash-flow-column" key={`${item.label}-${index}`}>
+              <div className="cash-flow-bar-group">
+                <div
+                  className="cash-flow-bar income"
+                  style={{ height: `${income ? Math.max(4, (income / maxValue) * 100) : 0}%` }}
+                  title={`Income: ${money(income)}`}
+                  aria-label={`Income ${money(income)}`}
+                />
+                <div
+                  className="cash-flow-bar expense"
+                  style={{ height: `${expense ? Math.max(4, (expense / maxValue) * 100) : 0}%` }}
+                  title={`Expense: ${money(expense)}`}
+                  aria-label={`Expense ${money(expense)}`}
+                />
+              </div>
+              <span className="cash-flow-label">{item.label}</span>
+            </div>
+          )
+        })}
+      </div>
+      {!hasData && !error && <div className="cash-flow-empty">No income or expenses in this period</div>}
+      {error && <div className="chart-error" role="alert">{error}</div>}
+    </div>
+  )
+}
+
 function Dashboard({ transactions, user, setPage, setModal }) {
-  const [cashFlowRange, setCashFlowRange] = useState('6')
+  const [cashFlowRange, setCashFlowRange] = useState(() => {
+    const saved = localStorage.getItem(STORAGE.cashFlowRange)
+    return ['week', 'month', '3', '6', '12'].includes(saved) ? saved : 'week'
+  })
+  const [cashFlowData, setCashFlowData] = useState([])
+  const [cashFlowError, setCashFlowError] = useState('')
   const totals = useMemo(() => {
     const income = transactions.filter((item) => item.type === 'income').reduce((sum, item) => sum + Number(item.amount), 0)
     const expenses = transactions.filter((item) => item.type === 'expense').reduce((sum, item) => sum + Number(item.amount), 0)
@@ -382,50 +431,72 @@ function Dashboard({ transactions, user, setPage, setModal }) {
     return Object.entries(values).map(([name, value]) => ({ name, value }))
   }, [transactions])
 
-  const monthlyData = useMemo(() => {
-    const values = {}
+  const localCashFlowData = useMemo(() => {
+    const valuesByDate = {}
     transactions.forEach((item) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date || '')) return
       const amount = Number(item.amount)
-      if (Number.isFinite(amount) && amount > 0 && ['income', 'expense'].includes(item.type)) {
-        values[item.date] ||= { income: 0, expense: 0 }
-        values[item.date][item.type] += amount
-      }
+      if (!Number.isFinite(amount) || amount <= 0 || !['income', 'expense'].includes(item.type)) return
+      valuesByDate[item.date] ||= { income: 0, expense: 0 }
+      valuesByDate[item.date][item.type] += amount
     })
 
+    const [currentYear, currentMonth, currentDay] = todayIso.split('-').map(Number)
     if (cashFlowRange === 'week' || cashFlowRange === 'month') {
-      const dayCount = cashFlowRange === 'week' ? 7 : 30
-      const [currentYear, currentMonth, currentDay] = todayIso.split('-').map(Number)
-      return Array.from({ length: dayCount }, (_, index) => {
-        const date = new Date(currentYear, currentMonth - 1, currentDay - (dayCount - 1 - index))
+      const length = cashFlowRange === 'week' ? 7 : 30
+      const start = new Date(currentYear, currentMonth - 1, currentDay - (length - 1))
+      return Array.from({ length }, (_, index) => {
+        const date = new Date(start)
+        date.setDate(start.getDate() + index)
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-        const label = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-        return values[key] ? { label, income: values[key].income, expense: values[key].expense } : { label, income: 0, expense: 0 }
+        const bucket = valuesByDate[key] || { income: 0, expense: 0 }
+        return {
+          label: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+          income: bucket.income,
+          expense: bucket.expense,
+        }
       })
     }
 
-    const monthCount = Number(cashFlowRange)
-    const monthlyValues = {}
-    transactions.forEach((item) => {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(item.date || '')) return
-      const monthKey = item.date.slice(0, 7)
-      monthlyValues[monthKey] ||= { income: 0, expense: 0 }
-      const amount = Number(item.amount)
-      if (Number.isFinite(amount) && amount > 0 && ['income', 'expense'].includes(item.type)) {
-        monthlyValues[monthKey][item.type] += amount
+    const length = Number(cashFlowRange)
+    const start = new Date(currentYear, currentMonth - 1 - (length - 1), 1)
+    return Array.from({ length }, (_, index) => {
+      const date = new Date(start.getFullYear(), start.getMonth() + index, 1)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const bucket = { income: 0, expense: 0 }
+      Object.entries(valuesByDate).forEach(([dateKey, value]) => {
+        if (dateKey.slice(0, 7) === key) {
+          bucket.income += value.income
+          bucket.expense += value.expense
+        }
+      })
+      return {
+        label: date.toLocaleDateString('en-IN', {
+          month: 'short',
+          ...(length === 12 ? { year: '2-digit' } : {}),
+        }),
+        income: bucket.income,
+        expense: bucket.expense,
       }
     })
-    const [currentYear, currentMonth] = todayIso.slice(0, 7).split('-').map(Number)
-    return Array.from({ length: monthCount }, (_, index) => {
-      const date = new Date(currentYear, currentMonth - 1 - (monthCount - 1 - index), 1)
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      const month = date.toLocaleDateString('en-IN', {
-        month: 'short',
-        ...(monthCount === 12 ? { year: '2-digit' } : {}),
-      })
-      return monthlyValues[key] ? { month, ...monthlyValues[key] } : { month, income: 0, expense: 0 }
-    })
   }, [transactions, cashFlowRange])
+
+  const monthlyData = cashFlowData.length ? cashFlowData : localCashFlowData
+
+  useEffect(() => {
+    let active = true
+    localStorage.setItem(STORAGE.cashFlowRange, cashFlowRange)
+    apiRequest(`/transactions/summary?range=${encodeURIComponent(cashFlowRange)}`)
+      .then((data) => {
+        if (!active) return
+        setCashFlowData(data.summary?.buckets || [])
+      })
+      .catch((error) => {
+        if (!active) return
+        setCashFlowError(error.message || 'Could not load cash-flow data.')
+      })
+    return () => { active = false }
+  }, [cashFlowRange, transactions])
 
   const chartPeriodLabel = cashFlowRange === 'week'
     ? 'the last 7 days'
@@ -452,7 +523,15 @@ function Dashboard({ transactions, user, setPage, setModal }) {
             <div><span>CASH FLOW</span><h2>{cashFlowRange === 'week' || cashFlowRange === 'month' ? 'Daily overview' : 'Monthly overview'}</h2></div>
             <label className="cash-flow-range">
               <span className="sr-only">Cash flow period</span>
-              <select value={cashFlowRange} onChange={(event) => setCashFlowRange(event.target.value)} aria-label="Cash flow period">
+              <select
+                value={cashFlowRange}
+                onChange={(event) => {
+                  setCashFlowData([])
+                  setCashFlowError('')
+                  setCashFlowRange(event.target.value)
+                }}
+                aria-label="Cash flow period"
+              >
                 <option value="week">Last week</option>
                 <option value="month">Last month</option>
                 <option value={3}>Last 3 months</option>
@@ -463,27 +542,11 @@ function Dashboard({ transactions, user, setPage, setModal }) {
             </label>
           </div>
           <div className="chart-wrap" role="img" aria-label={`Income and expenses for ${chartPeriodLabel}`}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData} barGap={4} barCategoryGap="18%" margin={{ top: 8, right: 4, bottom: 0, left: 0 }} accessibilityLayer>
-                <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
-                <XAxis
-                  dataKey={cashFlowRange === 'week' || cashFlowRange === 'month' ? 'label' : 'month'}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={cashFlowRange === 'month' ? 4 : 0}
-                  tick={{ fill: 'var(--muted)', fontSize: 10 }}
-                />
-                <YAxis axisLine={false} tickLine={false} width={48} domain={[0, 'auto']} allowDecimals={false} tick={{ fill: 'var(--muted)', fontSize: 10 }} tickFormatter={(value) => `₹${value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : value}`} />
-                <Tooltip
-                  formatter={(value, name) => [money(value), name === 'income' ? 'Income' : 'Expense']}
-                  contentStyle={{ borderRadius: 12, border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--text)' }}
-                  labelStyle={{ color: 'var(--text)', fontWeight: 700 }}
-                  cursor={{ fill: 'var(--chart-cursor)' }}
-                />
-                <Bar name="Income" dataKey="income" fill="#7c9a68" radius={[5, 5, 0, 0]} maxBarSize={28} isAnimationActive={false} />
-                <Bar name="Expense" dataKey="expense" fill="#efb35f" radius={[5, 5, 0, 0]} maxBarSize={28} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
+            <CashFlowChart
+              data={monthlyData}
+              periodLabel={chartPeriodLabel}
+              error={cashFlowError}
+            />
           </div>
         </article>
         <article className="panel spending">
