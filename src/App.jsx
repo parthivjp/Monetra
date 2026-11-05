@@ -609,6 +609,7 @@ function TransactionsPage({ transactions, setTransactions, setModal, toast }) {
   const [type, setType] = useState('all')
   const [category, setCategory] = useState('all')
   const [startDate, setStartDate] = useState('')
+  const [exporting, setExporting] = useState('')
 
   const filtered = transactions.filter((item) => {
     const matchesSearch = `${item.note} ${item.category}`.toLowerCase().includes(search.toLowerCase())
@@ -626,12 +627,14 @@ function TransactionsPage({ transactions, setTransactions, setModal, toast }) {
   }
 
   const exportFile = async (format) => {
+    if (exporting) return
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     if (type !== 'all') params.set('type', type)
     if (category !== 'all') params.set('category', category)
     if (startDate) params.set('startDate', startDate)
     try {
+      setExporting(format)
       const token = localStorage.getItem(STORAGE.token)
       const response = await fetch(`${API_URL}/transactions/export/${format}?${params}`, {
         headers: token ? { Authorization: 'Bearer ' + token } : {},
@@ -649,13 +652,15 @@ function TransactionsPage({ transactions, setTransactions, setModal, toast }) {
       toast(`${format.toUpperCase()} exported`)
     } catch (error) {
       toast(error.message || `${format.toUpperCase()} export failed.`)
+    } finally {
+      setExporting('')
     }
   }
 
   const allCategories = [...new Set(transactions.map((item) => item.category))]
   return (
     <div className="page">
-      <header className="page-header"><div><p>LEDGER</p><h1>Transactions</h1></div><div className="header-actions"><button className="secondary" onClick={() => exportFile('csv')}><Download size={17} />CSV</button><button className="secondary" onClick={() => exportFile('pdf')}><Download size={17} />PDF</button><button className="primary" onClick={() => setModal(true)}><Plus size={18} />Add transaction</button></div></header>
+      <header className="page-header"><div><p>LEDGER</p><h1>Transactions</h1></div><div className="header-actions"><button className="secondary" disabled={Boolean(exporting)} onClick={() => exportFile('csv')}><Download size={17} />{exporting === 'csv' ? 'Preparing...' : 'CSV'}</button><button className="secondary" disabled={Boolean(exporting)} onClick={() => exportFile('pdf')}><Download size={17} />{exporting === 'pdf' ? 'Preparing...' : 'PDF'}</button><button className="primary" onClick={() => setModal(true)}><Plus size={18} />Add transaction</button></div></header>
       <section className="filters panel">
         <div className="search-box"><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search transactions" /></div>
         <select value={type} onChange={(e) => setType(e.target.value)}><option value="all">All types</option><option value="income">Income</option><option value="expense">Expense</option></select>

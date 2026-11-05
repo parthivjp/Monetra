@@ -67,6 +67,7 @@ button { cursor: pointer; }
 .primary, .secondary { border: 0; border-radius: 8px; min-height: 44px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 13px; }
 .primary { background: #657c5c; color: white; box-shadow: 0 7px 16px rgba(101,124,92,.16); }
 .secondary { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+.primary:disabled, .secondary:disabled { cursor: wait; opacity: .62; box-shadow: none; }
 .auth-submit { width: 100%; margin-top: 4px; height: 48px; }
 .auth-switch { text-align: center; color: #85877f; font-size: 13px; margin: 22px 0 0; }
 .auth-switch button { border: 0; background: none; color: #657c5c; font-weight: 700; margin-left: 6px; }

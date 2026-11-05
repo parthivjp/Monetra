@@ -138,56 +138,133 @@ router.get('/export/pdf', async (req, res, next) => {
 
     const doc = new PDFDocument({ margin: 40, size: 'A4' })
     doc.pipe(res)
-    doc.fontSize(20).text('Monetra Transactions', { align: 'center' })
-    doc.moveDown(0.5)
-    doc.fontSize(10).text(`Exported ${new Date().toLocaleDateString('en-IN')}`)
-    doc.moveDown()
+    const pageWidth = 515
+    const left = 40
+    const exportedAt = new Date()
+    const money = (value) => `INR ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const totalIncome = transactions.filter((item) => item.type === 'income').reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    const totalExpense = transactions.filter((item) => item.type === 'expense').reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    const net = totalIncome - totalExpense
 
+    const drawPageFooter = (pageNumber) => {
+      doc.save()
+      doc.moveTo(left, 796).lineTo(left + pageWidth, 796).strokeColor('#e5e7eb').lineWidth(0.7).stroke()
+      doc.font('Helvetica').fontSize(8).fillColor('#6b7280')
+      doc.text('Monetra Personal Finance', left, 805, { width: 180 })
+      doc.text(`Page ${pageNumber}`, left + 390, 805, { width: 125, align: 'right' })
+      doc.restore()
+    }
+
+    let pageNumber = 1
+    doc.rect(0, 0, 595, 68).fill('#657c5c')
+    doc.font('Helvetica-Bold').fontSize(20).fillColor('#ffffff')
+    doc.text('MONETRA', left, 20, { width: 180 })
+    doc.font('Helvetica').fontSize(10).fillColor('#eef4ea')
+    doc.text('TRANSACTION REPORT', left + 330, 28, { width: 185, align: 'right' })
+
+    doc.font('Helvetica-Bold').fontSize(16).fillColor('#1f2937')
+    doc.text('Transactions', left, 88)
+    doc.font('Helvetica').fontSize(9).fillColor('#6b7280')
+    doc.text(`Generated ${exportedAt.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}`, left, 110)
+
+    const cardY = 132
+    const cardWidth = 163
+    const cardGap = 13
+    const summaryCards = [
+      { label: 'Transactions', value: String(transactions.length), color: '#657c5c' },
+      { label: 'Income', value: money(totalIncome), color: '#3f7d5b' },
+      { label: 'Expenses', value: money(totalExpense), color: '#b85c45' },
+    ]
+    summaryCards.forEach((card, index) => {
+      const cardX = left + index * (cardWidth + cardGap)
+      doc.roundedRect(cardX, cardY, cardWidth, 58, 7).fillAndStroke('#ffffff', '#dfe4da')
+      doc.rect(cardX, cardY, 5, 58).fill(card.color)
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(card.color).text(card.label.toUpperCase(), cardX + 14, cardY + 11, { width: cardWidth - 24 })
+      doc.font('Helvetica-Bold').fontSize(12).fillColor('#1f2937').text(card.value, cardX + 14, cardY + 31, { width: cardWidth - 24, ellipsis: true })
+    })
+
+    let filterY = 204
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#657c5c')
+    doc.text('APPLIED FILTERS', left, filterY)
+    const filterParts = []
+    if (req.query.type) filterParts.push(`Type: ${req.query.type === 'income' ? 'Income' : 'Expense'}`)
+    if (req.query.category) filterParts.push(`Category: ${req.query.category}`)
+    if (req.query.startDate) filterParts.push(`From: ${formatCsvDate(req.query.startDate)}`)
+    if (req.query.search) filterParts.push(`Search: ${req.query.search}`)
+    doc.font('Helvetica').fontSize(9).fillColor('#4b5563')
+    doc.text(filterParts.length ? filterParts.join('   |   ') : 'All transactions', left, filterY + 15, { width: pageWidth })
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(net >= 0 ? '#3f7d5b' : '#b85c45')
+    doc.text(`Net balance: ${money(net)}`, left, filterY + 34, { width: pageWidth, align: 'right' })
+
+    const columns = [
+      { label: 'DATE', width: 72, value: (item) => formatCsvDate(item.date) },
+      { label: 'TYPE', width: 58, value: (item) => item.type === 'income' ? 'Income' : 'Expense' },
+      { label: 'CATEGORY', width: 93, value: (item) => item.category },
+      { label: 'NOTE', width: 190, value: (item) => item.note || '-' },
+      { label: 'AMOUNT', width: 102, value: (item) => `${item.type === 'income' ? '+' : '-'} ${money(item.amount).replace('INR ', '')}` },
+    ]
+    let y = 260
+    const drawTableHeader = () => {
+      doc.rect(left, y, pageWidth, 28).fill('#4f5f48')
+      let x = left
+      columns.forEach((column) => {
+        doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#ffffff')
+        doc.text(column.label, x + 7, y + 9, {
+          width: column.width - 14,
+          height: 12,
+          lineBreak: false,
+          align: column.label === 'AMOUNT' ? 'right' : 'left',
+        })
+        x += column.width
+      })
+      y += 28
+    }
+
+    drawTableHeader()
     if (!transactions.length) {
-      doc.text('No transactions found.')
+      doc.roundedRect(left, y, pageWidth, 54, 6).fillAndStroke('#fafaf7', '#dfe4da')
+      doc.font('Helvetica-Bold').fontSize(11).fillColor('#657c5c')
+      doc.text('No transactions match the selected filters.', left, y + 21, { width: pageWidth, align: 'center' })
+      y += 54
     } else {
-      const columns = [
-        { label: 'Date', width: 78, value: (item) => formatCsvDate(item.date) },
-        { label: 'Type', width: 58, value: (item) => item.type === 'income' ? 'Income' : 'Expense' },
-        { label: 'Category', width: 94, value: (item) => item.category },
-        { label: 'Note', width: 195, value: (item) => item.note || '-' },
-        { label: 'Amount', width: 85, value: (item) => `${item.type === 'income' ? '+' : '-'} INR ${Number(item.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` },
-      ]
-      let y = doc.y
-      const drawHeader = () => {
-        doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff')
-        doc.rect(40, y, 510, 24).fill('#4f46e5')
-        let x = 40
-        for (const column of columns) {
-          doc.text(column.label, x + 4, y + 7, { width: column.width - 8, height: 14, lineBreak: false })
-          x += column.width
-        }
-        y += 24
-      }
-      drawHeader()
-
       transactions.forEach((item, index) => {
         const values = columns.map((column) => column.value(item))
-        doc.font('Helvetica').fontSize(8.5).fillColor('#111827')
+        doc.font('Helvetica').fontSize(8.5).fillColor('#1f2937')
         const heights = values.map((value, columnIndex) =>
-          doc.heightOfString(value, { width: columns[columnIndex].width - 8 }),
+          doc.heightOfString(value, { width: columns[columnIndex].width - 14 }),
         )
-        const rowHeight = Math.max(30, ...heights.map((height) => height + 12))
-        if (y + rowHeight > 802) {
+        const rowHeight = Math.max(34, ...heights.map((height) => height + 16))
+        if (y + rowHeight > 780) {
+          drawPageFooter(pageNumber)
           doc.addPage()
+          pageNumber += 1
           y = 50
-          drawHeader()
+          drawTableHeader()
         }
-        let x = 40
-        if (index % 2 === 1) doc.rect(40, y, 510, rowHeight).fill('#f3f4f6')
-        doc.fillColor('#111827')
+
+        doc.rect(left, y, pageWidth, rowHeight).fill(index % 2 === 0 ? '#ffffff' : '#f5f7f2')
+        doc.moveTo(left, y + rowHeight).lineTo(left + pageWidth, y + rowHeight).strokeColor('#e5e7eb').lineWidth(0.5).stroke()
+
+        let x = left
         values.forEach((value, columnIndex) => {
-          doc.text(value, x + 4, y + 6, { width: columns[columnIndex].width - 8, height: rowHeight - 12 })
+          doc.font(columnIndex === 1 && item.type ? 'Helvetica-Bold' : 'Helvetica')
+          doc.fontSize(8.5)
+          if (columnIndex === 4) {
+            doc.fillColor(item.type === 'income' ? '#3f7d5b' : '#b85c45')
+          } else {
+            doc.fillColor('#374151')
+          }
+          doc.text(value, x + 7, y + 9, {
+            width: columns[columnIndex].width - 14,
+            height: rowHeight - 18,
+            align: columns[columnIndex].label === 'AMOUNT' ? 'right' : 'left',
+          })
           x += columns[columnIndex].width
         })
         y += rowHeight
       })
     }
+    drawPageFooter(pageNumber)
     doc.end()
   } catch (error) { next(error) }
 })
